@@ -547,7 +547,7 @@ while(1)
     printf("DE: Awaiting CC to come in on port B  %u\n", CCport);
     count = recvfrom(sock1, buffer, CCport , 0, (struct sockaddr*)&server_addr, &addr_len);
    // LH_port = ntohs(client_addr.sin_port);
-    printf("command recd %c%c %x %x %x %x from port %d, bytes=%d\n",buffer[0],buffer[1],buffer[2],buffer[3],buffer[4],buffer[5], LH_port,count);
+    printf("command recd %c%c %x %x %x %x from port %d, bytes=%d\n",buffer[0],buffer[1],buffer[2],buffer[3],buffer[4],buffer[5], ntohs(LH_port),count);
 
 
      if(memcmp(buffer, DATARATE_INQUIRY, 2) == 0)
@@ -591,14 +591,36 @@ while(1)
 
     if(strncmp(buffer, CREATE_CHANNEL ,2) == 0)
       {
+      int channelNo =0;
+  // update to handle free form string input
+      const char s[2] = " ";
+      char *operand;
+      operand = strtok(buffer, s);
+      
+      printf("operand = %s\n",operand);
+      operand = strtok(NULL, s);
+      printf("channel# = %s\n",operand);
+      channelNo = atoi(operand);
 
-      memcpy(d.mybuf1, buffer, sizeof(CONFIGBUF));
+      operand = strtok(NULL, s);
+      printf("port C = %s\n",operand);
+      LH_CONF_IN_port[channelNo] = atoi(operand);
 
-      printf("CREATE CHANNEL RECD, cmd = %s, channel#=%i port C = %hu, port F = %hu \n",
-          d.myConfigBuf.cmd, d.myConfigBuf.channelNo, d.myConfigBuf.configPort, d.myConfigBuf.dataPort);
+      operand = strtok(NULL, s);
+      printf("port F = %s\n",operand);
+      LH_DATA_IN_port[channelNo] = atoi(operand);
 
-      LH_CONF_IN_port[d.myConfigBuf.channelNo] = d.myConfigBuf.configPort;  // Port C
-      LH_DATA_IN_port[d.myConfigBuf.channelNo] = d.myConfigBuf.dataPort;  // Port F
+      
+      char configReply[20] = "";
+
+
+   //   memcpy(d.mybuf1, buffer, sizeof(CONFIGBUF));
+
+   //   printf("CREATE CHANNEL RECD, cmd = %s, channel#=%i port C = %hu, port F = %hu \n",
+        //  d.myConfigBuf.cmd, d.myConfigBuf.channelNo, d.myConfigBuf.configPort, d.myConfigBuf.dataPort);
+
+  //    LH_CONF_IN_port[d.myConfigBuf.channelNo] = d.myConfigBuf.configPort;  // Port C
+   //   LH_DATA_IN_port[d.myConfigBuf.channelNo] = d.myConfigBuf.dataPort;  // Port F
       printf("ports set up; now set up sock\n");
       if (sock = socket(AF_INET, SOCK_DGRAM, 0) == -1)
           printf("creating sock failed\n");  // set up for sending to port F
@@ -610,22 +632,24 @@ while(1)
       portF_addr.sin_family = AF_INET;
    //   portF_addr.sin_addr.s_addr = htons(LH_IP);
       portF_addr.sin_addr.s_addr = client_addr.sin_addr.s_addr;
-      portF_addr.sin_port = htons(LH_DATA_IN_port[d.myConfigBuf.channelNo]);
-      printf("Bind to port %i\n",LH_DATA_IN_port[d.myConfigBuf.channelNo]);
-
+      portF_addr.sin_port = htons(LH_DATA_IN_port[channelNo]);
+      printf("Bind to port %i\n",LH_DATA_IN_port[channelNo]);
 
       ret = bind(sock, (struct sockaddr*)&portF_addr, addr_len);
       printf("bind ret=%i\n",ret);
       // set this befoe we change the buffer to reflect DE port setup
-      client_addr.sin_port = htons(LH_CONF_IN_port[d.myConfigBuf.channelNo]);   // the ACK ges back to Port C
+  //    client_addr.sin_port = htons(LH_CONF_IN_port[channelNo]);   // the ACK ges back to Port C
+      client_addr.sin_port = LH_port;   // the ACK ges back to Port A
       printf("Set up the AK\n");
       strncpy(d.myConfigBuf.cmd, "AK", 2);
      
-      d.myConfigBuf.configPort = DE_CH_IN_port[ d.myConfigBuf.channelNo]; // this is port D for this channel
+      d.myConfigBuf.configPort = DE_CH_IN_port[channelNo]; // this is port D for this channel
       d.myConfigBuf.dataPort = 0;  // this is Port E (mic) - currently unused
-      printf("Sending AK to port %i\n",client_addr.sin_port );
-      count = sendto(sock1, d.mybuf1, sizeof(d.myConfigBuf), 0, (struct sockaddr*)&client_addr, addr_len);
-      printf("response AK %i %i, bytes = %d  sent to ", d.myConfigBuf.configPort, ntohs(d.myConfigBuf.dataPort) ,count);
+      printf("Sending AK to port %i\n",ntohs(client_addr.sin_port) );
+      sprintf(configReply,"AK %i %i %i",channelNo,DE_CH_IN_port[channelNo],0);
+   //   count = sendto(sock1, d.mybuf1, sizeof(d.myConfigBuf), 0, (struct sockaddr*)&client_addr, addr_len);
+      count = sendto(sock1, configReply, sizeof(configReply), 0, (struct sockaddr*)&client_addr, addr_len);
+      printf("response %s, bytes = %d  sent to ", configReply, count);
       printf(" IP: %s, Port: %d\n", 
       inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
@@ -652,7 +676,8 @@ void *handleCommands(void* c)
 
   printf("Starting channel %i command processing\n",channelNo);
   printf("Port = %i\n",LH_CONF_IN_port[channelNo] );
-  struct commandBuf cmdBuf;
+//  struct commandBuf cmdBuf;
+  char workBuf[1024];
 
   int addr_len;
   int ret;
@@ -674,17 +699,17 @@ void *handleCommands(void* c)
   
   while(1)
     {
-    memset(&cmdBuf,0,sizeof(cmdBuf));  // clear this area
+  //  memset(&cmdBuf,0,sizeof(cmdBuf));  // clear this area
     printf("Ready to receive command on port D = %i\n", DE_CH_IN_port[channelNo]);
  //   count = recvfrom(sock2, cb.configBuffer, sizeof(cb.configBuffer) , 0, 
  //       (struct sockaddr*)&config_in_addr, &addr_len);
-    count = recvfrom(sock2, &cmdBuf, sizeof(cmdBuf) , 0, 
+    count = recvfrom(sock2, workBuf, sizeof(workBuf) , 0, 
         (struct sockaddr*)&config_in_addr, &addr_len);
-    printf("** Command received into channel %i, %i bytes, cmd=%s, cmdchnl=%i\n",
-            channelNo,count,cmdBuf.cmd,cmdBuf.channelNo);
-    printf("Command contains %x %x %x %x\n",cmdBuf.cmd[0],cmdBuf.cmd[1],cmdBuf.cmd[2],cmdBuf.cmd[3]);
+ //   printf("** Command received into channel %i, %i bytes, cmd=%s, cmdchnl=%i\n",
+ //           channelNo,count,cmdBuf.cmd,cmdBuf.channelNo);
+  //  printf("Command contains %x %x %x %x\n",cmdBuf.cmd[0],cmdBuf.cmd[1],cmdBuf.cmd[2],cmdBuf.cmd[3]);
 
-    if(memcmp(cmdBuf.cmd, STATUS_INQUIRY, 2) == 0)
+    if(memcmp(workBuf, STATUS_INQUIRY, 2) == 0)
       {
       printf("STATUS INQUIRY received\n");
       client_addr.sin_port = htons(LH_CONF_IN_port[channelNo] ); 
@@ -694,9 +719,54 @@ void *handleCommands(void* c)
       }
 
     // is this CH command?
-    if(memcmp(cmdBuf.cmd, CONFIG_CHANNELS, 2) == 0)
+    if(memcmp(workBuf, CONFIG_CHANNELS, 2) == 0)
       {
-      printf(" **********  CONFIG CHANNELS received %s\n", cmdBuf.cmd);
+
+    //  memcpy(workBuf,&cmdBuf,count);
+      printf(" **********  CONFIG CHANNELS received %s\n", workBuf);
+      int channelNo =0;
+  // update to handle free form string input
+      const char s[2] = " ";
+      char *operand;
+      operand = strtok(workBuf, s);  // this is the "CH"
+      
+      printf("operand = %s\n",operand);
+      operand = strtok(NULL, s);
+      printf("channel# = %s\n",operand);
+      channelNo = atoi(operand);
+
+      operand = strtok(NULL, s);  // VUTA standard indicator
+      printf("VITA type = %s\n",operand);    
+
+      operand = strtok(NULL, s);  // # of subchannels
+      printf("subchannels= %s\n",operand);  
+
+      noOfChannels = atoi(operand);
+
+      operand = strtok(NULL, s);  // speed
+      printf("samples/sec= %s\n",operand);
+      dataRate = atoi(operand);
+    
+      for (int i=0; i < noOfChannels; i++) 
+        {
+
+
+        operand = strtok(NULL, s); // subchannel no
+        int sNo = atoi(operand);
+        operand = strtok(NULL, s); // antenna#
+        int antNo = atoi(operand);
+        operand = strtok(NULL, s); 
+        float scfreq = atof(operand);
+
+        printf("Subchannel %i, Port %i, Freq %lf\n", sNo, antNo, scfreq);
+
+
+        }  
+
+
+
+/*
+
       memcpy(&cb,&cmdBuf,count);
       int channelNo = cb.chBuf.channelNo;
       noOfChannels = cb.chBuf.activeSubChannels;
@@ -710,6 +780,7 @@ void *handleCommands(void* c)
           printf("Subchannel %i, Port %i, Freq %lf\n", cb.chBuf.channelDef[i].subChannelNo, 
           cb.chBuf.channelDef[i].antennaPort, cb.chBuf.channelDef[i].channelFreq);
         }
+*/
   
       client_addr.sin_port = htons(LH_CONF_IN_port[channelNo] ); 
       count = 0;
@@ -717,7 +788,7 @@ void *handleCommands(void* c)
       printf("Response AK = %u bytes sent to LH port %u \n ",count, LH_CONF_IN_port[channelNo]) ;
       } // end of handling CH
 
-    if(memcmp(cmdBuf.cmd, DATARATE_INQUIRY, 2) == 0)
+    if(memcmp(workBuf, DATARATE_INQUIRY, 2) == 0)
       {
       printf(" ******** DATARATE INQUIRY received \n");
       sleep(0.2);
@@ -760,7 +831,7 @@ void *handleCommands(void* c)
 // Is this a command to start data collection?  
 // For simplicity, we assign RG to channel 0, FT8 to channel 1, WSPR to channel 2
 
-    if (memcmp(cmdBuf.cmd, START_DATA_COLL ,2)==0  && channelNo == 0)
+    if (memcmp(workBuf, START_DATA_COLL ,2)==0  && channelNo == 0)
 	  {
 	  printf("START DATA COLLECTION on channel %i;starting sendData\n",channelNo);
 	  stopDataColl = 0;
@@ -780,7 +851,7 @@ void *handleCommands(void* c)
       continue;
       }
 
-    if(memcmp(cmdBuf.cmd, STOP_DATA_COLL,2)==0  && channelNo == 0)
+    if(memcmp(workBuf, STOP_DATA_COLL,2)==0  && channelNo == 0)
       {
       printf("* * * * STOP DATA COLL received * * * *\n");
       stopDataColl = 1;
@@ -793,7 +864,7 @@ void *handleCommands(void* c)
       }
 
 
-    if ( (memcmp(cmdBuf.cmd, "SC",2)==0) && channelNo == 1)  // 
+    if ( (memcmp(workBuf, "SC",2)==0) && channelNo == 1)  // 
      {
       printf("Start FlexRadio / FT8 command received; starting thread\n");
       stopft8 = 0;
@@ -807,7 +878,7 @@ void *handleCommands(void* c)
       continue;
      }
 
-    if(memcmp(cmdBuf.cmd, STOP_DATA_COLL,2)==0  && channelNo == 1)
+    if(memcmp(workBuf, STOP_DATA_COLL,2)==0  && channelNo == 1)
       {
       printf("* * * * STOP DATA COLL (FT8) received * * * *\n");
       stopft8 = 1;
@@ -819,7 +890,7 @@ void *handleCommands(void* c)
       continue;
       }
 
-    if ( (memcmp(cmdBuf.cmd, "SC",2)==0) && channelNo == 2)  // 
+    if ( (memcmp(workBuf, "SC",2)==0) && channelNo == 2)  // 
      {
       printf("Start FlexRadio / WSPR command received; starting thread\n");
       stopwspr = 0;
@@ -833,7 +904,7 @@ void *handleCommands(void* c)
       continue;
      }
 
-    if(memcmp(cmdBuf.cmd, STOP_DATA_COLL,2)==0  && channelNo == 2)
+    if(memcmp(workBuf, STOP_DATA_COLL,2)==0  && channelNo == 2)
       {
       printf("* * * * STOP DATA COLL (WSPR)received * * * *\n");
       stopwspr = 1;
