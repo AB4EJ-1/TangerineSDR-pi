@@ -10,8 +10,10 @@ from subprocess import Popen, PIPE
 import configparser
 import smtplib
 
-# This is temporary until we can get digital_rf, h5py, and hdf5 to install correctly under Python3.x
-import sys
+import sys, platform
+import ctypes, ctypes.util
+
+from ctypes import *
 
 import h5py
 import numpy as np
@@ -45,6 +47,8 @@ csrf.init_app(app)
 
 global theStatus, theDataStatus, thePropStatus, statusmain
 global statusFT8, statusWSPR, statusRG, statusSnap, statusFHR
+global DE_IP_addr, DE_IP_portB, DE_portB_socket, LH_IP_portA, DE_IP_portC, LH_IP_portF   # portC will be a list (by channelNo)l portF comes from config.ini
+
 # statusControl = 0
 received = ""
 dataCollStatus = 0;
@@ -71,7 +75,7 @@ LED1_OFF           = "N1"
 TIME_INQUIRY       = "T?"
 TIME_STAMP         = "TS"
 CREATE_CHANNEL     = "CC"
-CONFIG_CHANNELS    = "CH"
+CONFIG_CHANNEL     = "CH"   # This sets up one channel, which may contain mutiple subchannels
 UNDEFINE_CHANNEL   = "UC"
 FIREHOSE_SERVER    = "FH"
 START_DATA_COLL    = "SC"
@@ -94,112 +98,110 @@ def is_numeric(s):
    print("Value error")
    return False
 
-def send_to_mainctl(cmdToSend,waitTime):
-  global theStatus, rateList, tcp_client
-  print("F: sending:'" + cmdToSend +"'")
+def send_to_DE(channelNo, msg):
+  global DE_IP_addr, DE_IP_portB, DE_portB_socket, LH_IP_portA, DE_IP_portC, LH_IP_portF 
+  print("Send to DE ",DE_IP_addr, DE_IP_portC[channelNo], msg)
+  msg1 = msg.encode('utf-8')
+  DE_portC_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  s = DE_portC_socket.sendto(msg1, (DE_IP_addr, int(DE_IP_portC[channelNo])))
+  print("s=",s)
+  DE_portC_socket.close()
 
-  data = cmdToSend                 # + "\n"  
-  try:
-     print("F: send cmd:",cmdToSend)
-     tcp_client.sendall(data.encode())
-     print("F: wait for DE response")
-     if(waitTime > 0):
-       time.sleep(waitTime)
-     print("F: try to receive response")
-     received = "NO RESPONSE"
-    # Read data from the TCP server and close the connection
-     try:
-       received = tcp_client.recv(1024, socket.MSG_DONTWAIT)
- #      print("F: received data from DE: ", received)
-       d = received.decode()
-     #  print("F: decoded:",d)
-       print("F: buftype is '",received[0:2],"'")
-       print("F: bytes=",received[0],"/",received[1],"/",received[2])
-       theStatus = "Active"
-       statusmain = 1
-#       print("find:",received[0:2].find("DR"))
-       if(d.find("DR") !=  -1):
-         print("F: DR buffer received")
-         parser = configparser.ConfigParser(allow_no_value=True)
-         parser.read('config.ini')
-         rateList = []
-         a = d.split(":")
-         b = a[1].split(";")
-       
-         print("b=",b)
-         rateCount = 0
-         for ratepair in b:
-           c = ratepair.split(',')
-           lenc = len(c[0])
-           print("c[0]=",c[0]," len c[0]=",lenc)
+  return
 
-           if(lenc > 3):
-             break
-           rateList.append(c)
-           parser.set('datarates', 'r'+str(rateCount), c[1] )
-           rateCount = rateCount + 1
-           print("ratepair=",ratepair," c=",c, "c[1]=",c[1])
-         print("rateList = ",rateList)
-         parser.set('datarates','numrates',str(rateCount))
-         fp = open('config.ini','w')
-         parser.write(fp)
-         fp.close()
-     except Exception as e:
-       print("F: exception on recv,")    # , e.message)
-       theStatus = "Mainctl stopped or DE disconnected , error: " + str(e)
-     theStatus = "Active"
-     print("F: mainctl answered ", received, " thestatus = ",theStatus)
 
-  except Exception as e: 
-     print(e)
-     theStatus = "F: send command to mainctl, Exception " + str(e)
-  finally:
-     print("F: bypassing TCP close")
-   #  print("F: close connection to mainctl")
-   #  tcp_client.close()
+def create_channel(channelNo, configPort, dataPort):
+  global DE_IP_addr, DE_IP_portB, DE_portB_socket, LH_IP_portA, DE_IP_portC, LH_IP_portF  
 
-def channel_request():
-  print("  * * * * * Send channel creation request * * * *")   
-  parser = configparser.ConfigParser(allow_no_value=True)
-  parser.read('config.ini')
-# ports that mainctl will listen on for traffic from DE
-  configPort =  parser['settings']['controlport']
-  dataPort   =  parser['settings']['dataport']
-# commas must separate fields for token processing to work in mainctl
-  send_to_mainctl((CREATE_CHANNEL + "," + "0 ," + configPort + "," + dataPort),1 )
+  msg = bytes(CREATE_CHANNEL + " " + str(channelNo) + " " + str(configPort) + " " + str(dataPort),'utf-8')
+
+  LH_portA_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
+
+  print("Channel ", channelNo, " Send CREATE_CHANNEL to DE: ",msg, " args = ",DE_IP_addr, DE_IP_portB)
+  DE_portB_socket.sendto(msg,(DE_IP_addr, DE_IP_portB))
+  print("bind to port ",LH_IP_portA)
+  LH_portA_socket.bind(('', LH_IP_portA))
+
+  print("Awaiting reply on port", LH_IP_portA )
+  reply = LH_portA_socket.recvfrom(20)
+  r = reply[0]
+
+  r = r.decode('utf-8')
+  rlist = r.split(" ")
+  DE_IP_portC.append(rlist[2]) # element 2 of split string is the PortC sent in the AK by the DE
+  print("DE replied: ",r," will send commands for this channel to port ",rlist[2])
+  LH_portA_socket.close();
+  return 
   
-def check_status_once():
-  global theStatus
-  send_to_mainctl(STATUS_INQUIRY,4)
-  print("after check status once, theStatus=",theStatus)
+
+def discover_DE(): # Here we call the UDPdiscover C routine to find fist Tangerine on network
+  global DE_IP_addr, DE_IP_portB, LH_IP_portA
+
+# Access the shared library (i.e., *.so)
+  libc = CDLL("./mylib.so")
+  print("libc=",libc)
+
+  a = c_ulong(0)
+  b = c_ulong(0);
+  m = ctypes.create_string_buffer(16)
+  UDPdiscover = libc.UDPdiscover
+  UDPdiscover.argtypes = [ctypes.POINTER(type(m)), ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong)]
+  UDPdiscover.restype = None
+
+  print("Run UDPdiscovery")
+  libc.UDPdiscover(m,a,b);
+  DE_IP_addr = m.value.decode("utf-8")
+  DE_IP_portB = b.value
+  LH_IP_portA = a.value
+  print("My port (port A) =",LH_IP_portA)
+  print("Tangerine at IP address %s" % DE_IP_addr)
+  print("At port B = ", DE_IP_portB)
   return
 
-def ping_mainctl():
-  while(1):
-    time.sleep(60)
-    localtime = time.asctime(time.localtime(time.time()))
-    print("F: PING mainctl with S? at ", localtime)
-    send_to_mainctl("S?",1)
-    print("F: mainctl replied") 
-
-def send_channel_config():  # send channel configuration command to DE
-  global theStatus
+def send_configuration():
+  print("set up configuration")
   parser = configparser.ConfigParser(allow_no_value=True)
   parser.read('config.ini')
-  channelcount = parser['channels']['numChannels']
-  rate_list = []
-  numRates = parser['datarates']['numRates']
-# this is channel zero (RG-type data)
-  configCmd = CONFIG_CHANNELS + ", 0, " + channelcount + "," + parser['channels']['datarate'] + ","
-  for ch in range(int(channelcount)):
-    print("add channel ",ch)
-    configCmd = configCmd + str(ch) + "," + parser['channels']['p' + str(ch)] + ","
-    configCmd = configCmd + parser['channels']['f' + str(ch)] + ","
-  print("Sending CH config command to DE")
+  noChannels = parser['channels']['numchannels']
 
-  send_to_mainctl(configCmd,1);
-  return
+# set up data acquisition. This is always Channel 0, with multiple subchannels.
+  msg = "CH 0 VT "+ noChannels + " " + parser['channels']['datarate'] + " " # specify VITA-T (interleaved IQ smaples)
+  subchannel_list = ""
+  count = 0
+  while count < int(noChannels):  # this is actually the no. of data acquisition subchannels
+    ant = parser['channels']['p' + str(count)]
+    freq = parser['channels']['f' + str(count)]
+    subchannel_list = subchannel_list + str(count) + " " + ant + " " + freq + " "
+    count = count + 1
+  msg = msg + subchannel_list
+  print("config 0 =", msg)
+  send_to_DE(0, msg)
 
+# set up FT8
+  msg = "CH 1 V4 "
+  subchannel_list = ""
+  count = 0
+  for chNo in range(0,7) :
+    if parser['settings']['ftant' + str(chNo)] == "Off":
+      continue
+    subchannel_list = subchannel_list + str(chNo) + " " + parser['settings']['ftant' + str(chNo)] + " " + parser['settings']['ft8'  + str(chNo) + "f"] + " "
+    count = count + 1 # how many subchannels are active
+  msg = msg + str(count) + " 4000 " + subchannel_list
+  print("config 1 (FT8)=",msg)
+
+# set up WSPR
+  msg = "CH 1 V4 "
+  subchannel_list = ""
+  count = 0
+  for chNo in range(0,7) :
+    if parser['settings']['wsant' + str(chNo)] == "Off":
+      continue
+    subchannel_list = subchannel_list + str(chNo) + " " + parser['settings']['wsant' + str(chNo)] + " " + parser['settings']['ws'  + str(chNo) + "f"]  + " "
+    count = count + 1 # how many subchannels are active
+  msg = msg + str(count) + " 375 " + subchannel_list
+  print("config 2 (WSPR)=",msg)
+    
+    
 
 #####################################################################
 # Here is the home page (Tangerine.html)
@@ -420,59 +422,58 @@ def sdr():
       form.dataStat = theDataStatus
       return render_template('tangerine.html', form = form)
 
-@app.route("/restart") # restarts mainctl program
+@app.route("/restart") # Starts/restarts DE
 def restart():
-   global theStatus, theDataStatus, tcp_client, statusmain
-   parser = configparser.ConfigParser(allow_no_value=True)
-   parser.read('config.ini')
-   print("F: restart")
-   returned_value = os.system("killall -9 mainctl")
-   print("F: after killing mainctl, retcode=",returned_value)
-   print("F: Trying to restart mainctl")
+  global theStatus, theDataStatus, statusmain
+  global DE_IP_addr, DE_IP_portB, DE_portB_socket, DE_IP_portC, LH_IP_portF # portC and portF are lists (one set per channel)
 
- # start mainctl as a subprocess
-   returned_value = subprocess.Popen("./mainctl/mainctl")
+  DE_IP_portC = [] 
+  LH_IP_portF = []
+  parser = configparser.ConfigParser(allow_no_value=True)
+  parser.read('config.ini')
+  print("F: restart; run discovery")
 
-   time.sleep(2)
-   print("F: after restarting mainctl, retcode=",returned_value)
-#   stopcoll()
-#   check_status_once()
-   print("RESTART: status = ",theStatus, " received = ", received)
-#
-   time.sleep(4);
-    # Initialize a TCP client socket using SOCK_STREAM 
-   try:
-     print("F: define socket")
-     host_ip, server_port = "127.0.0.1", 6100  # TODO: get port from config.ini
-     tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#    Settings to keep TCP port from disconnecting when not used for a while
-     tcp_client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,1)
-     tcp_client.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, 1)
-     tcp_client.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, 3)
-     tcp_client.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 15)
-    # Establish connection to TCP server and exchange data
-     print("F: *** WC: *** connect to socket, port ", server_port)
-     tcp_client.connect((host_ip, server_port))
-     theStatus = "Active"
-     statusmain = 1;
-   except Exception as e: 
+  discover_DE()
+
+  print("RESTART: status = ",theStatus, " received = ", received)
+  time.sleep(0.5);
+
+  try:
+    print("F: define socket")
+    DE_portB_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print("F: *DE_portB_socket created ")
+    count = 0
+    while count < 3:
+       cport = parser['settings']['configport' + str(count)]
+       dport = parser['settings']['dataport' + str(count)]
+       print("create channel with ports ",cport, dport)
+       create_channel(count, cport, dport)
+       time.sleep(1)
+       count = count + 1
+    theStatus = "Active"
+    statusmain = 1;
+  except Exception as e: 
      print(e)
-     theStatus = "F: TCP connect to mainctl, Exception " + str(e)
+     theStatus = "F: DE_portB_socket, Exception " + str(e)
+#
+  print("List of DE configuration ports:", DE_IP_portC)
+  send_configuration()
+
 
 # ringbuffer setup
-   ringbufferPath =    parser['settings']['ringbuffer_path']
-   ringbufferMaxSize = parser['settings']['ringbuf_maxsize']
+  ringbufferPath =    parser['settings']['ringbuffer_path']
+  ringbufferMaxSize = parser['settings']['ringbuf_maxsize']
 # halt any previously started ringbuffer task(s)
-   rcmd = 'killall -9 drf'
-   returned_value = os.system(rcmd)
-   rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' &'
+  rcmd = 'killall -9 drf'
+  returned_value = os.system(rcmd)
+  rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' &'
 # spin off this process asynchornously (notice the & at the end)
-   returned_value = os.system(rcmd)
-   print("F: ringbuffer control activated")
+  returned_value = os.system(rcmd)
+  print("F: ringbuffer control activated")
 # start heartbeat thread that pings mainctl at intervals
  #  thread1 = hbThread(1, "pingThread-1",1)
  #  thread1.start()
-   return redirect('/')
+  return redirect('/')
 
 @app.route("/datarates")
 def datarates():
