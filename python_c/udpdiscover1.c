@@ -413,7 +413,7 @@ static void *discover_receive_thread_o(void* arg) {
 
 
           printf("\tfound server IP is %s, Port is %d, devices = %i\n", inet_ntoa(addr.sin_addr),htons(addr.sin_port),devices);
-          discovered[devices].info.network.address.sin_port = htons(addr.sin_port);
+    //      discovered[devices].info.network.address.sin_port = htons(addr.sin_port);
 
         if(bytes_read<0) {
             fprintf(stderr,"discovery: bytes read %d\n", bytes_read);
@@ -489,7 +489,7 @@ static void *discover_receive_thread_o(void* arg) {
                             discovered[devices].status,
                             inet_ntoa(discovered[devices].info.network.address.sin_addr),
 						//	ntohs(discovered[devices].info.network.address.sin_port),
-							discovered[devices].info.network.address.sin_port,
+							htons(discovered[devices].info.network.address.sin_port),
                             discovered[devices].info.network.mac_address[0],
                             discovered[devices].info.network.mac_address[1],
                             discovered[devices].info.network.mac_address[2],
@@ -742,7 +742,7 @@ void old_discovery() {
         ifa = ifa->ifa_next;
     }
     freeifaddrs(addrs);
-
+ 
     // Do one additional "discover" for a fixed TCP address
     //discover(NULL);
 
@@ -750,11 +750,13 @@ void old_discovery() {
 
     int i;
     for(i=0;i<devices;i++) {
-                    fprintf(stderr,"discovery: found device=%d software_version=%d status=%d address=%s (%02X:%02X:%02X:%02X:%02X:%02X) on %s\n",
+                    fprintf(stderr,"discovery #%i found device=%d - %s status=%d address=%s port=%i (%02X:%02X:%02X:%02X:%02X:%02X) on %s\n",
+                            i,
                             discovered[i].device,
-                            discovered[i].software_version,
+                            discovered[i].name,
                             discovered[i].status,
                             inet_ntoa(discovered[i].info.network.address.sin_addr),
+                            htons(discovered[i].info.network.address.sin_port),
                             discovered[i].info.network.mac_address[0],
                             discovered[i].info.network.mac_address[1],
                             discovered[i].info.network.mac_address[2],
@@ -769,25 +771,26 @@ void old_discovery() {
 
 //////////////////////////////////////////////////////////////
 
-void UDPdiscover(char *data, int *LH_port) {
-
+void UDPdiscover(char *data, int *LH_port, int *DE_port) {
+// results passed back as a,b (Port A, Port B)
   puts("LOOKING for old protocol **********************");
   old_discovery();
-  printf("DISCOVER COMPLETED\n");
-//discovered[devices].info.network.address.sin_port = htons(addr.sin_port)
-  printf("passing back port# %i\n",discovered[2].info.network.address.sin_port); 
-  sleep(1);
-  *LH_port = discovered[2].info.network.address.sin_port;  // selected port back via reference
+  printf("Responding systems:\n");
 
-//  memcpy(LH_port, &selected_port, sizeof(selected_port));
+  for(int i = 0; i < devices; i++)
+    {
+    if(discovered[i].device == 7)
+     {
+     char IP_addr[16] = "";
+     sprintf(IP_addr,"%s",inet_ntoa(discovered[i].info.network.address.sin_addr));
+      printf("Devoce %i is Tangerine at %s port %i\n",i,inet_ntoa(discovered[i].info.network.address.sin_addr), htons(discovered[i].info.network.address.sin_port));
+      *DE_port = htons(discovered[1].info.network.address.sin_port);
+      printf("Passing device structure\n");
+      memcpy(data, IP_addr, sizeof(IP_addr));
+     }
+    }
+  *LH_port = selected_port;
 
-
-  //puts("LOOKING for new protocol **********************");
-  //new_discovery();
-  printf("passing back discovered name\n");
-  memcpy(data, discovered[2].name,14);
-
- // return discovered[0];
   }
 
 
