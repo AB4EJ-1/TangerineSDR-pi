@@ -106,7 +106,6 @@ def send_to_DE(channelNo, msg):
   s = DE_portC_socket.sendto(msg1, (DE_IP_addr, int(DE_IP_portC[channelNo])))
   print("s=",s)
   DE_portC_socket.close()
-
   return
 
 
@@ -188,9 +187,10 @@ def send_configuration():
     count = count + 1 # how many subchannels are active
   msg = msg + str(count) + " 4000 " + subchannel_list
   print("config 1 (FT8)=",msg)
+  send_to_DE(1,msg)
 
 # set up WSPR
-  msg = "CH 1 V4 "
+  msg = "CH 2 V4 "
   subchannel_list = ""
   count = 0
   for chNo in range(0,7) :
@@ -200,7 +200,8 @@ def send_configuration():
     count = count + 1 # how many subchannels are active
   msg = msg + str(count) + " 375 " + subchannel_list
   print("config 2 (WSPR)=",msg)
-    
+  send_to_DE(2,msg)
+  return
     
 
 #####################################################################
@@ -1179,8 +1180,8 @@ def ft8list():
     ft8string = ft8string + '"end":" "}'
    # print("ft8string= " , ft8string)
   except Exception as ex:
-    print("F: exception trying to build JSON FT8 list")
-    print(ex)
+   # print("F: exception trying to build JSON FT8 list")
+  #  print(ex)
 # no-op
     z=1
 
