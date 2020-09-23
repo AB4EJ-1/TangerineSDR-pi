@@ -1,0 +1,56 @@
+<html>
+<table width="100%">
+   <tbody><tr>
+    <td width="5%">
+     <center>
+      <a href="https://tangerinesdr.com"><img src="/static/tangerine_pix_sm.jpg" alt="TangerineSDR" >
+     </center>
+   </td>
+	<td width="78%">
+   	    <div class="bgtangerine">
+	     <hr class="tanger"><a href="http://localhost:5000">
+		    <b style="font-size: 60px">TangerineSDR</b><br> </a>
+		    <div style="font-size: 30px">a TAPR Modular Scientific Software Defined Radio Project</div>
+            <div style="font-size: 24px"><strong>'Danger Zone' - Technical Configuration Items</strong></div>
+	     <hr class="tanger">
+	    </div>
+	</td>
+    <td>
+	  <center>
+		  <a href="https://www.tapr.org/"><img src="/static/tapr-logo.png" alt="TAPR"></a>
+	  </center> 
+	</td>
+     </tr>
+       <tr>
+	<td>
+	</td>
+	   <td class="bgtangerine" width="10%" valign="top" align="left">
+       Technical Configurations. We suggest you not change these unless you really know what you are doing.
+<br>
+      <form action = "http://localhost:5000/danger" method = "POST"> {{ form.hidden_tag() }} 
+      <p style="font-size: 14px" >
+      <b> Digital RF Settings</b><br>
+         Subdirectory Cadence (secs.) <input type = "text" name = "subdircadence" value = {{ theNode }} />&nbsp;(numeric) <br>
+         DRF compression<input type = "text" name = "drfcompression" value = {{ theCall }} /> <br>
+
+         Milliseconds per file<input type = "text" name = "msecperfile" value = {{ theToken }} />&nbsp;<br>
+         <b> IP Settings </b><br>
+         DE discovery port <input type = "text" name = "DEdiscoveryport" value = {{ theLatitude }} /><br>
+         LH config port 0 <input type = "text" name = "configport0" value = {{ theLongitude }} /><br>
+         LH config port 1 <input type = "text" name = "configport1" value = {{ antenna1 }} /><br>
+         LH config port 2 <input type = "text" name = "configport2"value = {{ antenna2 }} /><br>
+         
+         LH data port 0 <input type = "text" name = "dataport0" value = {{ theLongitude }} /><br>
+         LH data port 1 <input type = "text" name = "dataport1" value = {{ theLongitude }} /><br>
+         LH data port 2 <input type = "text" name = "dataport2" value = {{ theLongitude }} /><br>
+
+       If you did something that makes your Tangerine inoperable, you may be able to fix it by restoring the configuration from initial settings; but remember, if you use that you will lose all settings you have entered (including those on other configuration pages such as frequency setting, etc., and this cannot be undone.
+		 <p class="links"><b><a href="/desetup">Restore to default configuration </b><br>
+
+         <p><input type = "submit" name = "csubmit" value = "Save" /><br>
+         <p><input type = "submit" name = "csubmit"  value = "Discard Changes" /><br>
+    </form>
+           </td>
+  </tbody>
+   </body>
+</html>

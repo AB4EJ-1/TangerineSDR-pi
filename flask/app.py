@@ -534,10 +534,17 @@ def config():
      antenna1 = antenna1, antenna2 = antenna2, form=form,
      theElevation = theElevation )
 
-@app.route("/clocksetup", methods = ['POST','GET'])
-def clocksetup():
+@app.route("/dgsetup", methods = ['POST','GET'])
+def dgsetup():
    global theStatus, theDataStatus
-   return render_template('clock.html')
+   form = MainControlForm()
+   return render_template('danger.html', form=form )
+
+@app.route("/danger", methods = ['POST','GET'])
+def danger():
+   global theStatus, theDataStatus
+   form = MainControlForm()
+   return render_template('danger.html', form=form )
 
 @app.route("/channelantennasetup", methods = ['POST','GET'])
 def channelantennasetup():

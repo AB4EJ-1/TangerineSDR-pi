@@ -37,9 +37,14 @@
     {{ form.hidden_tag() }}  
 	<form action = "/desetup" method = "POST">
 	  <table style="margin-left:200px" border = "1" width=70% > 
- 	   <td style="width:400px">Ringbuffer path<input type="text" name="ringbufferPath" 
-            size = "40" value={{ ringbufferPath }} /> Maximum Ringbuffer Size {{ form.maxRingbufsize }} </td>
-<td>Status:   {{ status }} </td.>
+ 	   <td style="width:600px">Ringbuffer path<input type="text" name="ringbufferPath" 
+            size = "30" value={{ ringbufferPath }} /> Maximum Ringbuffer Size {{ form.maxRingbufsize }} 
+            FFT output path<input type="text" name="fftoutputPath" />(csv files)<br>
+            Firehose output path<input type="text" name="firehosepath"/> (large disk work area)<br>
+            Path for temporary files<input type = "text" name="temppath" />(best to use RAMdisk here)
+            </td>
+       
+
       </table> 
                
 	  <table style="margin-left:200px" border = "1" width=70% > 
