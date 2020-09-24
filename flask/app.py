@@ -305,10 +305,10 @@ def sdr():
 
       if(form.startDC.data ): # User clicked button to start ringbuffer-type data collection
 
-            if(statusmain != 1):
-              print("F: user tried to start data collection before starting mainctl")
-              form.errline = "ERROR. You must Start/restart mainctl before starting data collection"
-              return render_template('tangerine.html', form = form)
+      #      if(statusmain != 1):
+      #        print("F: user tried to start data collection before starting mainctl")
+      #        form.errline = "ERROR. You must Start/restart mainctl before starting data collection"
+      #        return render_template('tangerine.html', form = form)
 
             if   ( len(parser['settings']['firehoser_path']) < 1 
                    and form.mode.data == 'firehoseR') :
@@ -336,10 +336,23 @@ def sdr():
            #   print("metadata path="+metadataPath)
               returned_value = os.system("mkdir "+ metadataPath)
               print("F: after metadata creation, retcode=",returned_value)
+              
           # Command mainctl to trigger DE to start sending ringbuffer data
           # This always refers to channel zero (i.e., subchannels supported)
            #   send_to_mainctl(START_DATA_COLL + "," + subdir,1)
-              send_to_mainctl(START_DATA_COLL,1)
+          #    send_to_mainctl(START_DATA_COLL,1)
+          
+          # kill any running rgrcvr processes
+              returned_value = os.system("pwd")
+              print("kill previous rgrcvr, if any")
+              returned_value = os.system("killall -9 rgrcvr")
+              print("F: after kill of rgrcvr, retcode=",returned_value)
+              returned_value = os.system("./rgrcvr &")      
+              print("F: after start of rgrcvr, retcode=",returned_value) 
+              send_to_DE(0,START_DATA_COLL + " 0")         
+          
+          
+          
               if(parser['settings']['snapshotter_mode'] == "On"):
                 statusSnap = 1
               else:
@@ -373,32 +386,57 @@ def sdr():
                 print("WARNING: unable to update DRF HDF5 properties file")
 
       if(form.stopDC.data ):
-            send_to_mainctl(STOP_DATA_COLL,0.5)
+            send_to_DE(0,STOP_DATA_COLL + " 0") 
+            returned_value = os.system("killall -9 rgrcvr")
+            print("F: after kill of ft8rcvr, retcode=",returned_value) 
             dataCollStatus = 0
             statusRG = 0
             statusSnap = 0
 
       if(form.startprop.data):  # user hit button to start propagation monitoring
 
-        if(statusmain != 1):
-           print("F: user tried to start data collection before starting mainctl")
-           form.errline = "ERROR. You must Start/restart mainctl before starting FT8?WSPR"
-           return render_template('tangerine.html', form = form)
+    #    if(statusmain != 1):
+    #       print("F: user tried to start data collection before starting mainctl")
+    #       form.errline = "ERROR. You must Start/restart mainctl before starting FT8?WSPR"
+    #       return render_template('tangerine.html', form = form)
 
         if(form.propFT.data == True):
-            send_to_mainctl(START_FT8_COLL,0)
+            #send_to_mainctl(START_FT8_COLL,0)
+            print("kill previous ft8rcvr, if any")
+            RAMpath = parser['settings']['ramdisk_path'] + "/FT8"
+            returned_value = os.system("mkdir " + RAMpath)
+            returned_value = os.system("rm " + RAMpath + "/*.c2")
+            returned_value = os.system("killall -9 ft8rcvr")
+            print("F: after kill of ft8rcvr, retcode=",returned_value)
+            returned_value = os.system("./ft8rcvr &")      
+            print("F: after start of ft8rcvr, retcode=",returned_value) 
+            send_to_DE(1,START_DATA_COLL + " 1") 
             statusFT8 = 1
+            
         if(form.propWS.data == True):
-            send_to_mainctl(START_WSPR_COLL,0)
+            print("kill previous wsprrcvr, if any")
+            RAMpath = parser['settings']['ramdisk_path'] + "/WSPR"
+            returned_value = os.system("mkdir " + RAMpath)
+            returned_value = os.system("rm " + RAMpath + "/*.c2")
+            returned_value = os.system("killall -9 wsprrcvr")
+            print("F: after kill of wsprrcvr, retcode=",returned_value)
+            returned_value = os.system("./wsprrcvr &")      
+            print("F: after start of wsprrcvr, retcode=",returned_value) 
+            send_to_DE(2,START_DATA_COLL + " 2") 
             statusWSPR = 1
         thePropStatus = 1
 
       if(form.stopprop.data) :
         if(form.propFT.data == True):
-            send_to_mainctl(STOP_FT8_COLL,0)
+         #   send_to_mainctl(STOP_FT8_COLL,0)
+            returned_value = os.system("killall -9 ft8rcvr")
+            print("F: after kill of ft8rcvr, retcode=",returned_value)
+            send_to_DE(1,STOP_DATA_COLL + " 1")
             statusFT8 = 0
         if(form.propWS.data == True):
-            send_to_mainctl(STOP_WSPR_COLL,0)
+            returned_value = os.system("killall -9 wsprrcvr")
+            print("F: after kill of wsprrcvr, retcode=",returned_value)
+            send_to_DE(2,STOP_DATA_COLL + " 2")
             statusWSPR = 0
         thePropStatus = 0
 
@@ -534,17 +572,60 @@ def config():
      antenna1 = antenna1, antenna2 = antenna2, form=form,
      theElevation = theElevation )
 
-@app.route("/dgsetup", methods = ['POST','GET'])
-def dgsetup():
-   global theStatus, theDataStatus
-   form = MainControlForm()
-   return render_template('danger.html', form=form )
 
 @app.route("/danger", methods = ['POST','GET'])
 def danger():
    global theStatus, theDataStatus
    form = MainControlForm()
-   return render_template('danger.html', form=form )
+   
+   
+   parser = configparser.ConfigParser(allow_no_value=True)
+   parser.read('config.ini')
+   if request.method == 'POST':
+     result = request.form
+     print("subdircadence = " + result.get('subdircadence'))
+     parser.set('settings', 'subdir_cadence'       , result.get('subdircadence'))
+     parser.set('settings', 'drf_compression'      , result.get('drfcompression'))
+     parser.set('settings', 'milliseconds_per_file', result.get('msecperfile'))
+     parser.set('settings', 'discoveryport'        , result.get('DEdiscoveryport'))
+     parser.set('settings', 'configport0'          , result.get('configport0'))
+     parser.set('settings', 'configport1'          , result.get('configport1'))
+     parser.set('settings', 'configport2'          , result.get('configport2'))
+     
+     parser.set('settings', 'dataport0'          , result.get('dataport0'))
+     parser.set('settings', 'dataport1'          , result.get('dataport1'))
+     parser.set('settings', 'dataport2'          , result.get('dataport2'))
+     
+     parser.set('settings', 'antenna0',     result.get('antenna1'))
+     parser.set('settings', 'antenna1',     result.get('antenna2'))
+     
+     fp = open('config.ini','w')
+     parser.write(fp)
+     fp.close()
+
+   parser.read('config.ini')
+   subdircadence =    parser['settings']['subdir_cadence']
+   drfcompression =   parser['settings']['drf_compression']
+   msecperfile =      parser['settings']['milliseconds_per_file']
+   DEdiscoveryport =  parser['settings']['discoveryport']
+   configport0 =      parser['settings']['configport0']
+   configport1 =      parser['settings']['configport1']
+   configport2 =      parser['settings']['configport2']
+   dataport0 =        parser['settings']['dataport0']
+   dataport1 =        parser['settings']['dataport1']
+   dataport2 =        parser['settings']['dataport2']
+
+   return render_template('danger.html', form = form ,
+     subdircadence = subdircadence,
+     drfcompression = drfcompression, msecperfile = msecperfile,
+     DEdiscoveryport = DEdiscoveryport , configport0 = configport0,
+     configport1 = configport1 , configport2 = configport2 ,
+     dataport0 = dataport0 , dataport1 = dataport1,  
+     dataport2 = dataport2 
+     )
+
+   
+  # return render_template('danger.html', form=form )
 
 @app.route("/channelantennasetup", methods = ['POST','GET'])
 def channelantennasetup():

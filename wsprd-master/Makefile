@@ -9,8 +9,8 @@ FC = gfortran
 LD = gfortran
 RM = rm -f
 
-CFLAGS = -Wall -O3 -funroll-loops -march=armv8-a+crc+simd -mfpu=neon
-FFLAGS = -Wall -O3 -funroll-loops -march=armv8-a+crc+simd -mfpu=neon
+CFLAGS = -Wall -O3 -funroll-loops -march=armv8-a+crc+simd 
+FFLAGS = -Wall -O3 -funroll-loops -march=armv8-a+crc+simd 
 
 all: $(TARGET)
 

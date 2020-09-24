@@ -30,19 +30,19 @@
       <form action = "http://localhost:5000/danger" method = "POST"> {{ form.hidden_tag() }} 
       <p style="font-size: 14px" >
       <b> Digital RF Settings</b><br>
-         Subdirectory Cadence (secs.) <input type = "text" name = "subdircadence" value = {{ theNode }} />&nbsp;(numeric) <br>
-         DRF compression<input type = "text" name = "drfcompression" value = {{ theCall }} /> <br>
+         Subdirectory Cadence (secs.) <input type = "text" name = "subdircadence" value = {{ subdircadence }} />&nbsp;(numeric) <br>
+         DRF compression<input type = "text" name = "drfcompression" value = {{ drfcompression }} /> <br>
 
-         Milliseconds per file<input type = "text" name = "msecperfile" value = {{ theToken }} />&nbsp;<br>
+         Milliseconds per file<input type = "text" name = "msecperfile" value = {{ msecperfile }} />&nbsp;<br>
          <b> IP Settings </b><br>
-         DE discovery port <input type = "text" name = "DEdiscoveryport" value = {{ theLatitude }} /><br>
-         LH config port 0 <input type = "text" name = "configport0" value = {{ theLongitude }} /><br>
-         LH config port 1 <input type = "text" name = "configport1" value = {{ antenna1 }} /><br>
-         LH config port 2 <input type = "text" name = "configport2"value = {{ antenna2 }} /><br>
+         DE discovery port <input type = "text" name = "DEdiscoveryport" value = {{ DEdiscoveryport }} /><br>
+         LH config port 0 <input type = "text" name = "configport0" value = {{ configport0 }} /><br>
+         LH config port 1 <input type = "text" name = "configport1" value = {{ configport1 }} /><br>
+         LH config port 2 <input type = "text" name = "configport2" value = {{ configport2 }} /><br>
          
-         LH data port 0 <input type = "text" name = "dataport0" value = {{ theLongitude }} /><br>
-         LH data port 1 <input type = "text" name = "dataport1" value = {{ theLongitude }} /><br>
-         LH data port 2 <input type = "text" name = "dataport2" value = {{ theLongitude }} /><br>
+         LH data port 0 <input type = "text" name = "dataport0" value = {{ dataport0 }} /><br>
+         LH data port 1 <input type = "text" name = "dataport1" value = {{ dataport1 }} /><br>
+         LH data port 2 <input type = "text" name = "dataport2" value = {{ dataport2 }} /><br>
 
        If you did something that makes your Tangerine inoperable, you may be able to fix it by restoring the configuration from initial settings; but remember, if you use that you will lose all settings you have entered (including those on other configuration pages such as frequency setting, etc., and this cannot be undone.
 		 <p class="links"><b><a href="/desetup">Restore to default configuration </b><br>

@@ -1,14 +1,14 @@
 [profile]
 token_value = 3BD69855A8BAE408366C10002CF - config PROFILE
-node = N12345
-grid = EM63fj
-callsign = AB4EJ
+node = N12345 - PROFILE
+grid = EM63fj - PROFILE
+callsign = AB4EJ - PROFILE
 latitude = -37.123 -config PROFILE
 longitude = 87.432 -config PROFILE
 elevation = 100 - config PROFILE
 test_value = T123 (internal use only)
-antenna0 = Hexbeam
-antenna1 = 80m_dipole
+antenna0 = Hexbeam - PROFILE
+antenna1 = 80m_dipole - PROFILE
 
 [settings]
 mode = ringbuffer      - - - phase this out
@@ -23,29 +23,32 @@ wspr_upload = On- set by button
 ringbuffer_path = /media/usb0/hdf5 -config
 ramdisk_path = /mnt/RAM_disk-config
 ringbuf_maxsize = 50MB-config
-fftoutput_path = /media/usb0/snapshotter  
-upload_path = /media/usb0/uploadTemp
-log_path = /home/odroid/Documents/Tangerine
-firehoser_path = /mnt/RAM_disk/firehose
-data_path = /mnt/RAM_disk/firehose/TangerineData
-temp_path = /mnt/RAM_disk/temp
-subdir_cadence = 20
-drf_compression = 1
-milliseconds_per_file = 5000
-discoveryport = 1024
-configport0 = 40001
-configport1 = 40003
-configport2 = 40005
-dataport0 = 40002
-dataport1 = 40004
-dataport2 = 40006
-controlport = 6100
-de_ip = 192.168.1.206
-de_port = 1024
-throttle = 1000000 -config
-central_host = 192.168.1.67
-central_port = 5000
-heartbeat_interval = 180
+fftoutput_path = /media/usb0/snapshotter          ADD TO DESETUP OK
+upload_path = /media/usb0/uploadTemp              ADD TO DESETUP  ok
+log_path = /home/odroid/Documents/Tangerine           TBD
+firehoser_path = /mnt/RAM_disk/firehose           ADD TO DESETUP  (COMBINE WITH RAMDISK PATH)
+data_path = /mnt/RAM_disk/firehose/TangerineData  ADD TO DESETUP  (COMBINE WITH RAMDISK PATH)
+temp_path = /mnt/RAM_disk/temp                    ADD TO DESETEUP (COMBINE WITH RAMDISK PATH)
+
+!! WHAT ABOUT FT8 & WSPR WORKFILE PATHS?
+
+subdir_cadence = 20                          ADD TO DANGER
+drf_compression = 1                         ADD TO DANGER
+milliseconds_per_file = 5000                         ADD TO DANGER
+discoveryport = 1024                         ADD TO DANGER
+configport0 = 40001                         ADD TO DANGER
+configport1 = 40003                         ADD TO DANGER
+configport2 = 40005                         ADD TO DANGER
+dataport0 = 40002                         ADD TO DANGER
+dataport1 = 40004                         ADD TO DANGER
+dataport2 = 40006                         ADD TO DANGER
+controlport = 6100            PHASE THIS OUT
+de_ip = 192.168.1.206         PHASE OUT
+de_port = 1024             DUPLICATES  discoveryport
+throttle = 1000000 -config    
+central_host = 192.168.1.67                          ADD TO DANGER
+central_port = 5000                          ADD TO DANGER
+heartbeat_interval = 180                          ADD TO DANGER
 ftant0 = 0-config
 ftant1 = 0-config
 ftant2 = Off-config
