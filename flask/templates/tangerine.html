@@ -32,6 +32,20 @@ function updateList() { $.getJSON( "/_ft8list", function( data ) {
 }
 setInterval("updateList()",15000)
 </script>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
+
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
 <body>
 
 <table width="100%">
@@ -59,10 +73,10 @@ setInterval("updateList()",15000)
       </table>
     <div style="width: 100%, display: table; ">
      <div style="display: table-row">
-      <div style="width: 195px; display: table-cell; font-size:15px; line-height:1.8em;"
-       <fieldset style="width:190px; margin-left:10px;" align="left">
+      <div style="width: 190px; display: table-cell; font-size:15px; line-height:1.8em;">
+       <fieldset style="width:190px; margin-left:5px;" align="left">
+       <legend>Configure</legend>
 
-        <a href="/restart">Start/restart DE</a> (Please allow 7 seconds) <br>
         <a href="/config">User Profile</a> <br>		 
 	    <a href="/TangerineSDR_documents/">Central Control System</a> <br>
         <a href="/desetup">Data Collection Setup</a> <br>
@@ -88,8 +102,8 @@ setInterval("updateList()",15000)
 	 <tr>
 		<td>Data Collection</td>
 	   <td>{{ form.dataStat }}</td>  
-	  </table>
-	 
+	  </table><br>
+
 
      <form style="width:500px;margin-left:10px" width = 90% action = "/" method = post>
        <table>
@@ -103,7 +117,8 @@ setInterval("updateList()",15000)
                {{ form.modeF }}Continuous Upload(Firehose-R)<br>
               <input type = "submit" name = "csubmit" value = "Save" />
                {{ form.startDC }}
-               {{ form.stopDC  }}
+               {{ form.stopDC  }}	 <br>
+               {{ form.restartDE }}&nbsp; Use this (only) to recover if DE does not start automatically or halts
             </div>
             <font color ="red">{{ form.errline }}</font>
          </fieldset>

@@ -202,6 +202,9 @@ def send_configuration():
   print("config 2 (WSPR)=",msg)
   send_to_DE(2,msg)
   return
+  
+  
+
     
 
 #####################################################################
@@ -247,8 +250,15 @@ def sdr():
       print("F: Main control POST; modeS=",form.modeS.data)
       print("F: Main control POST; modeF=",form.modeF.data)
       form.errline = ""
-
+      print("Entering main route")
+      print("restart button -",form.restartDE.data)
       result = request.form
+      
+
+      if(form.restartDE.data):
+      # TODO: here, add code to stop all activities & reflect that in config
+        return redirect('/restart')
+        
 
  # Check for errors and missing configurations
 
@@ -374,15 +384,18 @@ def sdr():
               print("Record list of subchannels=",chf)
               
               try:
-                print("Update properties file")
-           #     print("Removed temporarily for debugging")
+                time.sleep(1)  #wait for properties file to be created
+           #     metadataPath = parser['settings']['ringbuffer_path'] + "/" + subdir
+                print("Update properties file at ",metadataPath)
+
                 f5 = h5py.File(metadataPath + '/drf_properties.h5','r+')
-                f5.attrs.__setitem__('no_of_subchannels',chcount)
                 f5.attrs.__setitem__('subchannel_frequencies_MHz', chf)
-              #  f5.attrs.__setitem__('data_rate',datarate)
+                f5.attrs.__setitem__('data_source',"TangerineSDR")
                 f5.attrs.__setitem__('antenna_ports',ant)
                 f5.close()
-              except:
+              except Exception as e: 
+                print(e)
+                theStatus = "Properties file update error " + str(e)
                 print("WARNING: unable to update DRF HDF5 properties file")
 
       if(form.stopDC.data ):
@@ -443,7 +456,7 @@ def sdr():
       theDataStatus = ""
    #   print("configured modes RG '"+parser['settings']['ringbuffer_mode']+"' Snap '"+parser['settings']['snapshotter_mode']+"'");
    #   if(parser['settings']['ringbuffer_mode'] == "On"):
-      theDataStatus = theDataStatus + "Ringbuffer " + parser['settings']['ringbuffer_mode'] +";"
+  #    theDataStatus = theDataStatus + "Ringbuffer " + parser['settings']['ringbuffer_mode'] +";"
       if(statusFT8 == 1):
         theDataStatus = theDataStatus + "FT8 active; "
       if(statusWSPR == 1):
@@ -463,7 +476,7 @@ def sdr():
 
 @app.route("/restart") # Starts/restarts DE
 def restart():
-  global theStatus, theDataStatus, statusmain
+  global theStatus, theDataStatus, statusmain, dataCollStatus
   global DE_IP_addr, DE_IP_portB, DE_portB_socket, DE_IP_portC, LH_IP_portF # portC and portF are lists (one set per channel)
 
   DE_IP_portC = [] 
@@ -475,8 +488,8 @@ def restart():
   discover_DE()
 
   print("RESTART: status = ",theStatus, " received = ", received)
-  time.sleep(0.5);
-
+  time.sleep(0.5)
+  dataCollStatus = int(parser['settings']['datacollstatus'])
   try:
     print("F: define socket")
     DE_portB_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -635,13 +648,14 @@ def channelantennasetup():
 
 @app.route("/desetup",methods=['POST','GET'])
 def desetup():
-   global theStatus, theDataStatus
+   global theStatus, theDataStatus, dataCollStatus
    global statusFT8, statusWSPR, statusRG, statusSnap, statusFHR
    print("hit desetup2; request.method=",request.method)
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
    ringbufferPath = parser['settings']['ringbuffer_path']
    maxringbufsize = parser['settings']['ringbuf_maxsize']
+   dataCollStatus = int(parser['settings']['datacollstatus'])
 
    if request.method == 'GET' :
     channellistform = ChannelListForm()
@@ -838,7 +852,7 @@ def desetup():
       channellistform.channels.append_entry(channelform)
  #    send_to_mainctl(configCmd,1);
      if(statusCheck == True):
-        send_channel_config()
+        send_configuration()
         theStatus = "OK"
      else:
         theStatus = theStatus + " NOT SAVED"
