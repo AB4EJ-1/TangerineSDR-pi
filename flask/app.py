@@ -551,24 +551,43 @@ def config():
    global theStatus, theDataStatus
    form = MainControlForm()
    parser = configparser.ConfigParser(allow_no_value=True)
+   pageStatus = "Changes do not take effect until you click Save."
    parser.read('config.ini')
-   if request.method == 'POST':
+   result = request.form
+   if request.method == 'POST' and result.get('csubmit') != "Discard Changes" :
+     statusCheck = True
+     pageStatus = ""
      result = request.form
      print("F: result of config post =")
-     print(result.get('theGrid'))
-     parser.set('profile', 'token_value', result.get('theToken'))
-     parser.set('profile', 'latitude',    result.get('theLatitude'))
-     parser.set('profile', 'longitude',   result.get('theLongitude'))
-     parser.set('profile', 'elevation',   result.get('theElevation'))
-     parser.set('profile','node',         result.get('theNode'))
-     parser.set('profile','callsign',     result.get('theCall'))
-     parser.set('profile','grid',         result.get('theGrid'))
-     parser.set('profile','antenna0',     result.get('antenna1'))
-     parser.set('profile','antenna1',     result.get('antenna2'))
-     
-     fp = open('config.ini','w')
-     parser.write(fp)
-     fp.close()
+     stationGrid = result.get('theGrid')
+     t = (0,0)
+     try:
+       print("try to convert grid")
+       t = locator.locator_to_latlong(stationGrid)
+       print("computed loc = ",t)
+     except:
+       statusCheck = False
+       pageStatus = "Grid is not a valid grid. "
+     if(result.get('theElevation').isnumeric() == False):
+       statusCheck = False
+       pageStatus = pageStatus + "Elevation must be numeric. "
+       
+     if(statusCheck == True):
+       parser.set('profile', 'token_value', result.get('theToken'))
+       parser.set('profile', 'latitude',    str(t[0]))
+       parser.set('profile', 'longitude',   str(t[1]))
+       parser.set('profile', 'elevation',   result.get('theElevation'))
+       parser.set('profile', 'node',        result.get('theNode'))
+       parser.set('profile', 'callsign',    result.get('theCall'))
+       parser.set('profile', 'grid',        result.get('theGrid'))
+       parser.set('profile', 'antenna0',    result.get('antenna1'))
+       parser.set('profile', 'antenna1',    result.get('antenna2'))
+       fp = open('config.ini','w')
+       parser.write(fp)
+       fp.close()
+       pageStatus = pageStatus + "Saved."
+     else:
+       pageStatus = pageStatus + "NOT SAVED."
 
    parser.read('config.ini')
    theToken =     parser['profile']['token_value']
@@ -585,7 +604,7 @@ def config():
      theLatitude = theLatitude, theLongitude = theLongitude,
      theNode = theNode, theCall = theCall, theGrid = theGrid,
      antenna1 = antenna1, antenna2 = antenna2, form=form,
-     theElevation = theElevation )
+     status = pageStatus, theElevation = theElevation )
 
 
 @app.route("/danger", methods = ['POST','GET'])
@@ -953,12 +972,6 @@ def callsign():
            except:
              pageStatus = pageStatus + "Grid # " + str(count) + " not a valid grid square. "
              statusCheck = False
-     #      finally: 
-     #        print("hit finally, t=",t)
-     #        if ( t == (0,0)):
-     #          print("trigger rejection")
-     #          pageStatus = pageStatus + "Grid # " + str(count) + " not a valid grid square. "
-     #          statusCheck = False
        
       
      if(statusCheck == True):
