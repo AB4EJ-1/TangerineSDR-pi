@@ -783,8 +783,9 @@ void UDPdiscover(char *data, int *LH_port, int *DE_port) {
      {
      char IP_addr[16] = "";
      sprintf(IP_addr,"%s",inet_ntoa(discovered[i].info.network.address.sin_addr));
-      printf("Devoce %i is Tangerine at %s port %i\n",i,inet_ntoa(discovered[i].info.network.address.sin_addr), htons(discovered[i].info.network.address.sin_port));
-      *DE_port = htons(discovered[1].info.network.address.sin_port);
+      printf("udpdiscover1: DevIce %i is Tangerine at %s port %i\n",i,inet_ntoa(discovered[i].info.network.address.sin_addr), htons(discovered[i].info.network.address.sin_port));
+      *DE_port = htons(discovered[i].info.network.address.sin_port);
+      
       printf("Passing device structure\n");
       memcpy(data, IP_addr, sizeof(IP_addr));
      }

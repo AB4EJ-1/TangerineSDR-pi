@@ -1,4 +1,5 @@
 <html>
+<head>
 <script type=text/javascript src="{{
   url_for('static', filename='jquery.js') }}"></script>
 <script type=text/javascript>
@@ -32,8 +33,8 @@ function updateList() { $.getJSON( "/_ft8list", function( data ) {
 }
 setInterval("updateList()",15000)
 </script>
+</head>
 
-<head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
 <title></title>
 <style type="text/css">
@@ -73,16 +74,16 @@ fieldset {
       </table>
     <div style="width: 100%, display: table; ">
      <div style="display: table-row">
-      <div style="width: 190px; display: table-cell; font-size:15px; line-height:1.8em;">
-       <fieldset style="width:190px; margin-left:5px;" align="left">
+      <div style="width: 175px; display: table-cell; font-size:15px; line-height:1.8em;">
+       <fieldset style="width:175px; margin-left:5px;" align="left">
        <legend>Configure</legend>
 
         <a href="/config">User Profile</a> <br>		 
-	    <a href="/TangerineSDR_documents/">Central Control System</a> <br>
-        <a href="/desetup">Data Collection Setup</a> <br>
-        <a href="/throttle">Throttling Setup</a><br>
+	    <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+        <a href="/desetup">Data Collection</a> <br>
+        <a href="/uploading">Uploading</a><br>
 		<a href="/callsign">Callsign/Grid Monitor</a><br>
-		<a href="/index.html">Magnetometer Setup</a> <br>
+		<a href="/index.html">Magnetometer</a> <br>
         <a href="/notification">Notification</a><br>
         <a href="/propagation">FT8 Setup</a><br>
         <a href="/propagation2">WSPR Setup</a><br>
@@ -90,7 +91,7 @@ fieldset {
 	  </fieldset> </div>
 	  <div style="display: table-cell;">
 
-	  <table style="margin-left:10px" border = "1" width=75% > 
+	  <table style="margin-left:5px" border = "1" width=75% > 
 	  <tr>
 	   <th class="bgtangerine" width="10%" valign="top" align="left">
            <b style="font-size: 14px">Status of: </th>
@@ -105,7 +106,7 @@ fieldset {
 	  </table><br>
 
 
-     <form style="width:500px;margin-left:10px" width = 90% action = "/" method = post>
+     <form style="width:500px;margin-left:5px" width = 90% action = "/" method = post>
        <table>
         <td> 
          <fieldset style="width:300px" align="left" >

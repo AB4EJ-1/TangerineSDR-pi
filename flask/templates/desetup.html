@@ -1,5 +1,18 @@
 <html>
+<head>
+</head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
 
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
 <table width="100%">
    <tbody><tr>
     <td width="5%">
@@ -23,39 +36,51 @@
 	  </center> 
 	</td>
      </tr>
-
       </table>
-      <center>
+     <div style="width: 100%, display: table; ">
+     <div style="display: table-row">
+      <div style="width: 170px; display: table-cell; font-size:15px; line-height:1.8em;">
+      <a href="/">Main Control Panel</a><br>
+       <fieldset style="width:170px; margin-left:3px;" align="left">
+       <legend>Configure</legend>
+        <a href="/config">User Profile</a> <br>		 
+	    <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+        <a href="/uploading">Uploading</a><br>
+		<a href="/callsign">Callsign/Grid Monitor</a><br>
+		<a href="/index.html">Magnetometer Setup</a> <br>
+        <a href="/notification">Notification</a><br>
+        <a href="/propagation">FT8 Setup</a><br>
+        <a href="/propagation2">WSPR Setup</a><br>
+        <a href="/danger">Danger Zone </a>(Technical Configurations)
+	  </fieldset> </div>
       To make a channel active, select antenna#; otherwise, set to off.
-      </center>
-      <form action = "/desetup" method = "POST">
-	  <table style="margin-left:200px" border = "1" width=70% > 
+     
+      <form action = "/desetup" method = "POST">  {{ form.hidden_tag() }} 
+	  <table style="margin-left:10px" border = "1" width=95% > 
      </td>
      <td><input type = "submit" name = "csubmit" value = "Save Changes" />  
-         <input type = "submit" name = "csubmit" value = "Discard Changes" /></p>  
+         <input type = "submit" name = "csubmit" value = "Discard Changes" />
+         Changes do not take effect until you click Save.
+         </p>  
      </td>
-    {{ form.hidden_tag() }}  
+ 
 	<form action = "/desetup" method = "POST">
-	  <table style="margin-left:200px" border = "1" width=70% > 
+	  <table style="margin-left:10px" border = "1" width=95% > 
  	   <td style="width:600px">Ringbuffer path<input type="text" name="ringbufferPath" 
-            size = "30" value={{ ringbufferPath }} /> Maximum Ringbuffer Size {{ form.maxRingbufsize }} 
+            size = "30" value={{ ringbufferPath }} /> Maximum Ringbuffer Size {{ form.maxRingbufsize }} <br>
             FFT output path<input type="text" name="fftoutputPath" />(csv files)<br>
             Firehose output path<input type="text" name="firehosepath"/> (large disk work area)<br>
             Path for temporary files<input type = "text" name="temppath" />(best to use RAMdisk here)
             </td>
-       
-
-      </table> 
-               
-	  <table style="margin-left:200px" border = "1" width=70% > 
+      </table>        
+	  <table style="margin-left:10px" border = "1" width=95% > 
 	  <tr><font color="white">      
        <th style="width:300px" >Number of Channels to run: </th>
 	   <th style="width:50px" >{{ form.channelcount }}</th>
 	   <th><input type = "submit" name = "csubmit" value = "Set no. of channels" /> </th>
        <th> Data Rate (samples/sec): {{ form.channelrate }} </th>
       </tr>
-
-	  <table style="margin-left:200px" border = "1" width=70% > 
+	  <table style="margin-left:10px" border = "1" width=95% > 
 	  <tr><font color="white">      
        <th style="width:50px" >Channel</th>
 	   <th style="width:50px" >Antenna Port</th>

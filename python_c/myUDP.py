@@ -5,7 +5,7 @@ import ctypes, ctypes.util
 from ctypes import *
 
 # Access the shared library (i.e., *.so)
-libc = CDLL("./mylib.so")
+libc = CDLL("./discoverylib.so")
 print("libc=",libc)
 
 a = c_ulong(0)

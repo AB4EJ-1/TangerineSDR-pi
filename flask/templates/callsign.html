@@ -1,9 +1,25 @@
 <html>
+<head>
 <script>
 function goBack() {
   window.history.back();
 }
 </script>
+</head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
+
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
+
 <body>
 <table width="100%">
    <tbody><tr>
@@ -27,14 +43,43 @@ function goBack() {
 	  </center> 
 	</td>
      </tr>
-       <tr>
+     </table>
+     
+         <div style="width: 100%, display: table; ">
+     <div style="display: table-row">
+      <div style="width: 205px; display: table-cell; float: left; font-size:15px; line-height:1.8em;" valign="top">
+      <a href="/">Main Control Panel</a><br>
+       <fieldset style="width:170px; margin-left:3px;" align="left" >
+       <legend>Configure</legend>
+        <a href="/config">User Profile</a> <br>		 
+	    <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+	    <a href="/desetup">Data Collection</a> <br>
+        <a href="/uploading">Uploading</a><br>
+		<a href="/index.html">Magnetometer Setup</a> <br>
+        <a href="/notification">Notification</a><br>
+        <a href="/propagation">FT8 Setup</a><br>
+        <a href="/propagation2">WSPR Setup</a><br>
+        <a href="/danger">Danger Zone </a>(Technical Configurations)
+	  </fieldset> </div>
+
 	<td>
 	</td>
 	   <td class="bgtangerine" align = "left" width="10%" valign="top" >
-	  <table style="margin-left:1px" border = "1" width=70% > 
+	   Enter up to 6 callsigns and/or 6 grids you wish to monitor for. When a monitored callsign or grid is detected in your FT8 or WSPR, system will try to notify you using Notification parameters you have configured.<br><br>
+         <p style="margin-left:220px" class="links"><b></b>
+           <form style="margin-left:200px" action = "/callsign" method = "POST"> 
+            {{ form.hidden_tag() }} 
+            <input type = "submit" name = "csubmit" value = "Save Changes" />         
+            <input type = "submit" name = "csubmit" value = "Discard Changes" />
+            Changes do not take effect until you click Save. 
+            </p>  
+         
+          
+          </p>  
+	  <table style="display: inline-block; margin-left:50px;" border = "1"> 
 	  <tr>
 	   <th class="bgtangerine" width="10%" valign="top" align="left">
-           <b style="font-size: 14px">#</th>
+           <b style="font-size: 15px">#</th>
 	   <th style="width:50px" >Callsign</th>
       </tr>
 	  <tr>
@@ -55,14 +100,42 @@ function goBack() {
 	   <td style="width:50px"><input type="text" name="c4" value={{ c4 }} > </td>
 	 <tr>
 	   <td>5</td>{{ form.hidden_tag() }} 
-	   <td style="width:50px"><input type="text" name="c5" value={{ c5 }} > </td>
+	   <td style="width:50px"><input type="text" name="c5" value={{ c5 }} > </td> 
 	  </table>
-           <p style="margin-left:200px" class="links"><b><a href="/notification">Configure Notification</a></b></p>
+	  
+	  <table style="display: inline-block; margin-left:50px;" border = "1" >
+	  <tr>
+	   <th class="bgtangerine" width="10%" valign="top" align="left">
+           <b style="font-size: 14px">#</th>
+	   <th style="width:50px" >Grid</th>
+      </tr>
+	  	   	<td>0</td>{{ form.hidden_tag() }} 
+	   <td style="width:50px"><input type="text" name="g0" value={{ g0 }} > </td>
+	 <tr>
+	 <td>1</td>{{ form.hidden_tag() }} 
+	   <td style="width:50px"><input type="text" name="g1" value={{ g1 }} > </td>
+	 <tr>
+	 	 <tr>
+	 <td>2</td>{{ form.hidden_tag() }} 
+	   <td style="width:50px"><input type="text" name="g2" value={{ g2 }} > </td>
+	 <tr>
+	 	 <tr>
+	 <td>3</td>{{ form.hidden_tag() }} 
+	   <td style="width:50px"><input type="text" name="g3" value={{ g3 }} > </td>
+	 <tr>
+	 	 <tr>
+	 <td>4</td>{{ form.hidden_tag() }} 
+	   <td style="width:50px"><input type="text" name="g4" value={{ g4 }} > </td>
+	 <tr>
+	 	 <tr>
+	 <td>5</td>{{ form.hidden_tag() }} 
+	   <td style="width:50px"><input type="text" name="g5" value={{ g5 }} > </td>
+	 <tr>
+	 	 <tr>
+  	   
+	 </table>  
+	   </form></p>
 
-     <form action = "/callsign" method = "POST">
-         <p><input type = "submit" name = "csubmit" value = "Save Changes" /></p>         
-         <p><input type = "submit" name = "csubmit" value = "Discard Changes" /></p>  
-     </form>
 
            </td>
   </tbody>

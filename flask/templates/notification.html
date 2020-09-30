@@ -1,9 +1,25 @@
 <html>
+<head>
 <script>
 function goBack() {
   window.history.back();
 }
 </script>
+
+</head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
+
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
+
 <body>
 <table width="100%">
    <tbody><tr>
@@ -30,18 +46,37 @@ function goBack() {
        <tr>
 	<td>
 	</td>
-	   <td class="bgtangerine" align = "left" width="10%" valign="top" >
-		Configure how you will be notified when monitored station is heard
+	
+	      </table>
 
+     <div style="width: 100%, display: table; ">
+     <div style="display: table-row">
+      <div style="width: 170px; display: table-cell; font-size:14px; line-height:1.8em;">
+      <a href="/">Main Control Panel</a><br>
+       <fieldset style="width:170px; margin-left:5px;" align="left">
+       <legend>Configure</legend>
+        <a href="/config">User Profile</a> <br>		 
+	    <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+	    <a href="/desetup">Data Collection</a> <br>
+        <a href="/uploading">Uploading</a><br>
+		<a href="/callsign">Callsign/Grid Monitor</a><br>
+		<a href="/index.html">Magnetometer Setup</a> <br>
+        <a href="/propagation">FT8 Setup</a><br>
+        <a href="/propagation2">WSPR Setup</a><br>
+        <a href="/danger">Danger Zone </a>(Technical Configurations)
+	  </fieldset> </div>
+	
+	   <td class="bgtangerine" align = "left" width="10%" valign="top" >
+		Configure how you will be notified when monitored station is heard.
 
      <form action = "/notification" method = "POST" action="">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-         <fieldset style="width:85%" align="center" >
+         <fieldset style="width:95%" align="left" >
             <legend>Email Parameters</legend>
               Status: <font color="red">  {{ status }} </font>
-            <div style = font-size:20px; font-weight:bold; margin-left:150px;>
+            <div style = "font-size:14px; margin-left:15px; line-height:1.0em; width=300px;">
         <p>SMTP Server Hostname<input type = "text" name = "smtpsvr" value = {{ smtpsvr }} ></p>
-		<p>Email from address <input type = "text" name = "emailfrom" value = {{ emailfrom }} ></p>
+		Email from address <input type = "text" name = "emailfrom" value = {{ emailfrom }} ><br>
 		<p>Email to address <input type = "text" name = "emailto" value = {{ emailto }} ></p>
 		<p>SMTP Server Port# <input type = "text" name = "smtpport" value = {{ smtpport }} ></p>
 		<p>SMTP timeout <input type = "text" name = "smtptimeout" value = {{ smtptimeout }} ></p>
@@ -51,9 +86,10 @@ function goBack() {
 
          </fieldset>
 
-         <p><input type = "submit" name = "csubmit" value = "Send test email"/><p>
-         <p><input type = "submit" name = "csubmit" value = "Save Changes" /></p>         
-         <p><input type = "submit" name = "csubmit" value = "Discard Changes" /></p>  
+         <p><input type = "submit" name = "csubmit" value = "Send test email"/>&nbsp;
+         <input type = "submit" name = "csubmit" value = "Save Changes" />&nbsp;  
+         <input type = "submit" name = "csubmit" value = "Discard Changes" />&nbsp;
+         Changes do not take effect until you click Save.  
      </form>
 
            </td>

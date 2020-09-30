@@ -1,4 +1,19 @@
 <html>
+<head>
+</head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
+
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
+<body>
 
 <table width="100%">
    <tbody><tr>
@@ -23,18 +38,38 @@
 	</td>
      </tr>
       </table>
+           
+     <div style="width: 100%, display: table; ">
+     <div style="display: table-row">
+      <div style="width: 170px; display: table-cell; font-size:14px; line-height:1.8em;">
+      <a href="/">Main Control Panel</a><br>
+       <fieldset style="width:170px; margin-left:5px;" align="left">
+       <legend>Configure</legend>
+        <a href="/config">User Profile</a> <br>		 
+	    <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+	    <a href="/desetup">Data Collection</a> <br>
+        <a href="/uploading">Uploading</a><br>
+		<a href="/callsign">Callsign/Grid Monitor</a><br>
+	    <a href="/notification">Notification</a><br>
+		<a href="/index.html">Magnetometer Setup</a> <br>
+        <a href="/propagation2">WSPR Setup</a><br>
+        <a href="/danger">Danger Zone </a>(Technical Configurations)
+	  </fieldset> </div>
+      
+
+      
       <center>
       To make a channel active, select antenna#; otherwise, set to off.
       </center>
       <form action = "/propagation" method = "POST">
-	  <table style="margin-left:200px" border = "1" width=70% > 
+	  <table style="margin-left:20px" border = "1" width=70% > 
 </td>
      <td><input type = "submit" name = "csubmit" value = "Save Changes" />  
          <input type = "submit" name = "csubmit" value = "Discard Changes" /> &nbsp; {{ form.status }}</p>  
      
 </td>
 	<form action = "/propagation" method = "post">
-	  <table style="margin-left:200px" border = "1" width=70% > 
+	  <table style="margin-left:20px" border = "1" width=70% > 
 	  <tr><font color="white">
        <th style="width:50px" >Channel</th>
 	   <th style="width:50px" >Antenna Port</th>

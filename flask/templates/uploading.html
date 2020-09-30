@@ -1,0 +1,86 @@
+<html>
+<head>
+</head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
+
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
+<body>
+<table width="100%">
+   <tbody><tr>
+    <td width="5%">
+     <center>
+      <a href="https://tangerinesdr.com"><img src="/static/tangerine_pix_sm.jpg" alt="TangerineSDR" >
+     </center>
+   </td>
+	<td width="78%">
+   	    <div class="bgtangerine">
+	     <hr class="tanger"><a href="/">
+		    <b style="font-size: 60px">TangerineSDR</b><br> </a>
+		    <div style="font-size: 30px">a TAPR Modular Scientific Software Defined Radio Project</div>
+            <div style="font-size: 24px"><strong>Uploading</strong></div>
+	     <hr class="tanger">
+	    </div>
+	</td>
+    <td>
+	  <center>
+		  <a href="https://www.tapr.org/"><img src="/static/tapr-logo.png" alt="TAPR"></a>
+	  </center> 
+	</td>
+     </tr>
+       <tr>
+	<td>
+	</td>
+
+      </table>
+
+     <div style="width: 100%, display: table; ">
+     <div style="display: table-row">
+      <div style="width: 170px; display: table-cell; font-size:15px; line-height:1.8em;">
+      <a href="/">Main Control Panel</a><br>
+       <fieldset style="width:170px; margin-left:3px;" align="left">
+       <legend>Configure</legend>
+        <a href="/config">User Profile</a> <br>		 
+	    <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+	    <a href="/desetup">Data Collection</a> <br>
+		<a href="/callsign">Callsign/Grid Monitor</a><br>
+		<a href="/index.html">Magnetometer Setup</a> <br>
+        <a href="/notification">Notification</a><br>
+        <a href="/propagation">FT8 Setup</a><br>
+        <a href="/propagation2">WSPR Setup</a><br>
+        <a href="/danger">Danger Zone </a>(Technical Configurations)
+	  </fieldset> </div>
+	
+	  <td class="bgtangerine" width="10%" valign="top" align="left">
+      <form action = "/uploading" method = "POST">
+        <input type = "submit" name = "csubmit" value = "Save" />&nbsp;
+        <input type = "submit" name = "csubmit" value = "Discard Changes" />&nbsp;
+        Changes do not take effect until you click Save. <br>
+		<fieldset style="width:95%" align="center">
+		  <legend>Set Data Upload Parameters</legend>
+			{{ form.hidden_tag() }}
+			<div style = font-size:14px; font-weight:bold; margin-left:150px;>
+			Central Control Upload URL<input type="text" name="centralURL"
+			   value = {{ centralURL }} /><br>
+			Central Control Upload Port<input type="text" name="centralPort"
+			   value = {{ centralPort }} /><br>
+			{{ form.throttle.label }}
+			{{ form.throttle }}
+			</div>
+		</fieldset>
+
+
+
+    </form>
+           </td>
+  </tbody>
+   </body>
+</html>

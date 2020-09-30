@@ -1,4 +1,20 @@
 <html>
+<head>
+</head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
+
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
+<body>
+
 <table width="100%">
    <tbody><tr>
     <td width="5%">
@@ -24,11 +40,35 @@
        <tr>
 	<td>
 	</td>
+	</table>
+	
+	     <div style="width: 100%, display: table; ">
+     <div style="display: table-row">
+      <div style="width: 170px; display: table-cell; font-size:14px; line-height:1.8em;">
+      <a href="/">Main Control Panel</a><br>
+       <fieldset style="width:170px; margin-left:5px;" align="left">
+       <legend>Configure</legend>
+        <a href="/config">User Profile</a> <br>		 
+	    <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+	    <a href="/desetup">Data Collection</a> <br>
+        <a href="/uploading">Uploading</a><br>
+		<a href="/callsign">Callsign/Grid Monitor</a><br>
+	    <a href="/notification">Notification</a><br>
+		<a href="/index.html">Magnetometer Setup</a> <br>
+        <a href="/propagation">FT8 Setup</a><br>
+        <a href="/propagation2">WSPR Setup</a><br>
+
+	  </fieldset> </div>
+	
+
 	   <td class="bgtangerine" width="10%" valign="top" align="left">
        Technical Configurations. We suggest you not change these unless you really know what you are doing.
 <br>
       <form action = "http://localhost:5000/danger" method = "POST"> {{ form.hidden_tag() }} 
-      <p style="font-size: 14px" >
+         &nbsp;&nbsp;<input type = "submit" name = "csubmit" value = "Save" /> &nbsp;
+         <input type = "submit" name = "csubmit"  value = "Discard Changes" /><br>
+         Changes do not tyake effect until you click Save.
+      <p style="font-size: 14px; margin-left:20px;" >
       <b> Digital RF Settings</b><br>
          Subdirectory Cadence (secs.) <input type = "text" name = "subdircadence" value = {{ subdircadence }} />&nbsp;(numeric) <br>
          DRF compression<input type = "text" name = "drfcompression" value = {{ drfcompression }} /> <br>
@@ -43,12 +83,13 @@
          LH data port 0 <input type = "text" name = "dataport0" value = {{ dataport0 }} /><br>
          LH data port 1 <input type = "text" name = "dataport1" value = {{ dataport1 }} /><br>
          LH data port 2 <input type = "text" name = "dataport2" value = {{ dataport2 }} /><br>
-
-       If you did something that makes your Tangerine inoperable, you may be able to fix it by restoring the configuration from initial settings; but remember, if you use that you will lose all settings you have entered (including those on other configuration pages such as frequency setting, etc., and this cannot be undone.
+       <br>
+       <fieldset style="width:800px; margin-left:5px; font-size:14px;" align="left">
+       The Nuclear Option: If you did something that makes your Tangerine inoperable, you may be able to fix it by restoring the configuration from initial settings; but remember, if you use that you will <i>lose all settings</i> you have entered (including those on other configuration pages such as frequency setting, etc.), <b>and this cannot be undone.</b>
 		 <p class="links"><b><a href="/desetup">Restore to default configuration </b><br>
+		 </fieldset>
 
-         <p><input type = "submit" name = "csubmit" value = "Save" /><br>
-         <p><input type = "submit" name = "csubmit"  value = "Discard Changes" /><br>
+
     </form>
            </td>
   </tbody>

@@ -137,7 +137,7 @@ def discover_DE(): # Here we call the UDPdiscover C routine to find fist Tangeri
   global DE_IP_addr, DE_IP_portB, LH_IP_portA
 
 # Access the shared library (i.e., *.so)
-  libc = CDLL("./mylib.so")
+  libc = CDLL("./discoverylib.so")
   print("libc=",libc)
 
   a = c_ulong(0)
@@ -808,8 +808,7 @@ def desetup():
        else:
          theStatus = theStatus + "Freq for channel " + str(ch) + " must be numeric;"
          statusCheck = False
-
-    
+  
      if(statusCheck == True):
        print("Save config; ringbuffer_path=" + result.get('ringbufferPath'))
        parser.set('settings', 'ringbuffer_path', result.get('ringbufferPath'))
@@ -817,7 +816,6 @@ def desetup():
        parser.write(fp)
        fp.close()
    
-
      channellistform = ChannelListForm()
      channelcount = parser['channels']['numChannels']
      form = ChannelControlForm()
@@ -863,18 +861,20 @@ def desetup():
           form = form, status = theStatus,
           channellistform = channellistform)
 
-
-
-@app.route("/throttle", methods = ['POST','GET'])
-def throttle():
+@app.route("/uploading", methods = ['POST','GET'])
+def uploading():
    global theStatus, theDataStatus
    form = ThrottleControlForm()
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
    if request.method == 'GET':
      form.throttle.data = parser['settings']['throttle']
-     return render_template('throttle.html',
-	  form = form)
+
+     centralURL =     parser['settings']['central_host']
+     centralPort =    parser['settings']['central_port']
+     
+     return render_template('uploading.html', centralURL = centralURL,
+	  centralPort = centralPort, form = form)
 
    if request.method == 'POST':
      result = request.form
@@ -885,12 +885,17 @@ def throttle():
        print("F: result of throttle post =")
        throttle= ""
        parser.set('settings', 'throttle', result.get('throttle'))
+       parser.set('settings', 'central_host', result.get('centralURL'))
+       parser.set('settings', 'central_port', result.get('centralPort'))
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
-
+       
+   centralURL =     parser['settings']['central_host']
+   centralPort =    parser['settings']['central_port']
    ringbufferPath = parser['settings']['throttle']
-   return render_template('throttle.html', throttle = throttle, form = form)
+   return render_template('uploading.html', throttle = throttle, centralURL = centralURL,
+	  centralPort = centralPort, form = form)
 
 @app.route("/callsign", methods = ['POST','GET'])
 def callsign():
@@ -905,8 +910,15 @@ def callsign():
      c3 = parser['monitor']['c3']
      c4 = parser['monitor']['c4']
      c5 = parser['monitor']['c5']
+     g0 = parser['monitor']['g0']
+     g1 = parser['monitor']['g1']
+     g2 = parser['monitor']['g2']
+     g3 = parser['monitor']['g3']
+     g4 = parser['monitor']['g4']
+     g5 = parser['monitor']['g5']
      return render_template('callsign.html', form = form,
-	  c0 = c0, c1 = c1, c2 = c2, c3 = c3, c4 = c4, c5 = c5)
+      c0 = c0, c1 = c1, c2 = c2, c3 = c3, c4 = c4, c5 = c5,
+	  g0 = g0, g1 = g1, g2 = g2, g3 = g3, g4 = g4, g5 = g5)
    if request.method == 'POST':
      result = request.form
      print("F: result=", result.get('csubmit'))
@@ -922,6 +934,12 @@ def callsign():
        parser.set('monitor', 'c3', result.get('c3'))
        parser.set('monitor', 'c4', result.get('c4'))
        parser.set('monitor', 'c5', result.get('c5'))
+       parser.set('monitor', 'g0', result.get('g0'))
+       parser.set('monitor', 'g1', result.get('g1'))
+       parser.set('monitor', 'g2', result.get('g2'))
+       parser.set('monitor', 'g3', result.get('g3'))
+       parser.set('monitor', 'g4', result.get('g4'))
+       parser.set('monitor', 'g5', result.get('g5'))
        fp = open('config.ini','w')
        parser.write(fp)
 
@@ -931,8 +949,15 @@ def callsign():
      c3 = parser['monitor']['c3']
      c4 = parser['monitor']['c4']
      c5 = parser['monitor']['c5']
+     g0 = parser['monitor']['g0']
+     g1 = parser['monitor']['g1']
+     g2 = parser['monitor']['g2']
+     g3 = parser['monitor']['g3']
+     g4 = parser['monitor']['g4']
+     g5 = parser['monitor']['g5']
      
      return render_template('callsign.html', form = form,
+      g0 = g0, g1 = g1, g2 = g2, g3 = g3, g4 = g4, g5 = g5,
 	  c0 = c0, c1 = c1, c2 = c2, c3 = c3, c4 = c4, c5 = c5)
 
 @app.route("/notification", methods = ['POST','GET'])

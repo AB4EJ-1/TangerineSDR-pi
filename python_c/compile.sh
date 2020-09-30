@@ -1,2 +1,2 @@
-gcc -c -fPIC udpdiscover1.c -o mylib.o
-gcc -shared mylib.o -o mylib.so
+gcc -c -fPIC udpdiscover1.c -o discoverylib.o
+gcc -shared discoverylib.o -o discoverylib.so
