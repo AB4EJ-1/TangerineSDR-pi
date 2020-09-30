@@ -53,24 +53,26 @@ fieldset {
         <a href="/propagation2">WSPR Setup</a><br>
         <a href="/danger">Danger Zone </a>(Technical Configurations)
 	  </fieldset> </div>
-      To make a channel active, select antenna#; otherwise, set to off.
+      &nbsp; &nbsp; To make a channel active, select antenna#; otherwise, set to off.
      
       <form action = "/desetup" method = "POST">  {{ form.hidden_tag() }} 
 	  <table style="margin-left:10px" border = "1" width=95% > 
      </td>
      <td><input type = "submit" name = "csubmit" value = "Save Changes" />  
          <input type = "submit" name = "csubmit" value = "Discard Changes" />
-         Changes do not take effect until you click Save.
+         {{ status }}
          </p>  
      </td>
  
 	<form action = "/desetup" method = "POST">
 	  <table style="margin-left:10px" border = "1" width=95% > 
+	  
  	   <td style="width:600px">Ringbuffer path<input type="text" name="ringbufferPath" 
-            size = "30" value={{ ringbufferPath }} /> Maximum Ringbuffer Size {{ form.maxRingbufsize }} <br>
-            FFT output path<input type="text" name="fftoutputPath" />(csv files)<br>
-            Firehose output path<input type="text" name="firehosepath"/> (large disk work area)<br>
-            Path for temporary files<input type = "text" name="temppath" />(best to use RAMdisk here)
+            size = "35" value={{ ringbufferPath }} /> Maximum Ringbuffer Size {{ form.maxRingbufsize }} <br>
+            
+            FFT output path<input type="text" name="fftoutputpath" size = "35" value= {{fftoutputpath}} />(csv files)<br>
+            Firehose output path<input type="text" name="firehosepath" size = 35" value = {{firehosepath}}/> (large disk work area)<br>
+            Path for temporary files<input type = "text" name="temppath" size=35 value = {{temppath}} />(best to use RAMdisk here)
             </td>
       </table>        
 	  <table style="margin-left:10px" border = "1" width=95% > 

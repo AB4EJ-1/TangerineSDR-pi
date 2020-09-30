@@ -63,7 +63,7 @@ fieldset {
       <form action = "/uploading" method = "POST">
         <input type = "submit" name = "csubmit" value = "Save" />&nbsp;
         <input type = "submit" name = "csubmit" value = "Discard Changes" />&nbsp;
-        Changes do not take effect until you click Save. <br>
+        {{ status }} <br><br>
 		<fieldset style="width:95%" align="center">
 		  <legend>Set Data Upload Parameters</legend>
 			{{ form.hidden_tag() }}

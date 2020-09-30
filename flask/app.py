@@ -39,6 +39,8 @@ from wtforms import validators, ValidationError
 
 from flask_wtf import CSRFProtect
 
+from pyhamtools import locator
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'here-is-your-secret-key-ghost-rider'
 app.secret_key = 'development key'
@@ -651,13 +653,19 @@ def desetup():
    global theStatus, theDataStatus, dataCollStatus
    global statusFT8, statusWSPR, statusRG, statusSnap, statusFHR
    print("hit desetup2; request.method=",request.method)
+   pageStatus = "Changes do not take effect until you click Save."
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
    ringbufferPath = parser['settings']['ringbuffer_path']
    maxringbufsize = parser['settings']['ringbuf_maxsize']
+   fftoutputpath  = parser['settings']['fftoutput_path']
+   firehosepath   = parser['settings']['firehoser_path']
+   temppath       = parser['settings']['temp_path']
    dataCollStatus = int(parser['settings']['datacollstatus'])
+   
+   result = request.form
 
-   if request.method == 'GET' :
+   if request.method == 'GET' or result.get('csubmit') == "Discard Changes":
     channellistform = ChannelListForm()
 # populate channel settings from config file
     channelcount = parser['channels']['numChannels']
@@ -689,46 +697,17 @@ def desetup():
     print("form maxringbufsize=",form.maxRingbufsize.data)
     return render_template('desetup.html',
 	  ringbufferPath = ringbufferPath, channelcount = channelcount,
-      channellistform = channellistform,
-      form = form, status = theStatus)
+      channellistform = channellistform, fftoutputpath = fftoutputpath,
+      firehosepath = firehosepath, temppath = temppath,
+      form = form, status = pageStatus)
 
 # if we arrive here, user has hit one of the buttons on page
 
-   result = request.form
+  # result = request.form  (redundant)
 
    print("F: result=", result.get('csubmit'))
 
-# does user want to start over?
-   if result.get('csubmit') == "Discard Changes" :
-    channellistform = ChannelListForm()
-# populate channel settings from config file
-    channelcount = parser['channels']['numChannels']
-    form = ChannelControlForm()
-    form.channelcount.data = channelcount
-    rate_list = []
-# populate rate capabilities from config file.
-# The config file should have been updated from DE sample rate list buffer.
-    numRates = parser['datarates']['numRates']
-    for r in range(int(numRates)):
-      theRate = parser['datarates']['r'+str(r)]
-      theTuple = [ str(theRate), int(theRate) ]
-      rate_list.append(theTuple)
-
-    form.channelrate.choices = rate_list
-    rate1 = int(parser['channels']['datarate'])
-    form.channelrate.data = rate1
-    form.maxRingbufsize.data = maxringbufsize
-    for ch in range(int(channelcount)):
-      channelform = ChannelForm()
-      channelform.channel_ant  = parser['channels']['p' + str(ch)] 
-      channelform.channel_freq = parser['channels']['f' + str(ch)]
-      channellistform.channels.append_entry(channelform)
-
-    return render_template('desetup.html',
-	  ringbufferPath = ringbufferPath, channelcount = channelcount,
-      channellistform = channellistform,
-      form = form, status = theStatus)
-
+# If we reach this point, it is a POST.
 # did user hit the Set channel count button?
 
    if result.get('csubmit') == "Set no. of channels":
@@ -755,9 +734,10 @@ def desetup():
       channellistform.channels.append_entry(channelform)
      print("return to desetup")
      return render_template('desetup.html',
-	      ringbufferPath = ringbufferPath, channelcount = channelcount,
-          form = form, status = theStatus,
-          channellistform = channellistform)
+	  ringbufferPath = ringbufferPath, channelcount = channelcount,
+      channellistform = channellistform, fftoutputpath = fftoutputpath,
+      firehosepath = firehosepath, temppath = temppath,
+      form = form, status = pageStatus)
 
 # user wants to save changes; update configuration file
 
@@ -767,6 +747,7 @@ def desetup():
    if result.get('csubmit') == "Save Changes":
      statusCheck = True
   #   theStatus = "ERROR-"
+     pageStatus = ""
      channelcount = result.get('channelcount')
      channelrate = result.get('channelrate')
      maxringbufsize = result.get('maxRingbufsize')
@@ -774,20 +755,40 @@ def desetup():
      parser.set('settings','ringbuf_maxsize',maxringbufsize)
      print("set data rate to ", channelrate)
      parser.set('channels','datarate',channelrate)
-   #  theStatus = ""
+
      print("set #channels to ",channelcount)
      parser.set('channels','numChannels',channelcount)
      print("RESULT: ", result) 
 
-     rgPathExists = os.path.isdir(result.get('ringbufferPath'))
-     print("path / directory existence check: ", rgPathExists)
+     rgPathExists    = os.path.isdir(result.get('ringbufferPath'))
+     fftPathExists   = os.path.isdir(result.get('fftoutputpath'))
+     fhosePathExists = os.path.isdir(result.get('firehosepath'))
+     tempPathExists   = os.path.isdir(result.get('temppath'))
+     print("RG path / directory existence check: ", rgPathExists)
      if (statusRG == 1 or statusFHR == 1 or statusSnap == 1 ):
        dataCollStatus = 1
+
      if rgPathExists == False:
-      theStatus = "Ringbuffer path invalid or not a directory. "
+      pageStatus = "Ringbuffer path invalid or not a directory. "
       statusCheck = False
-     elif dataCollStatus == 1:
-      theStatus = theStatus + "ERROR: you must stop data collection before saving changes here. "
+      
+     print("FFT path / directory existence check: ", fftPathExists)
+     if fftPathExists == False:
+      pageStatus = pageStatus + "FFT output path not a directory. "
+      statusCheck = False 
+      
+     print("firehose path / directory existence check: ", fhosePathExists)
+     if fhosePathExists == False:
+      pageStatus = pageStatus + "firehose output path not a directory. "
+      statusCheck = False 
+      
+     print("temp path / directory existence check: ", tempPathExists)
+     if tempPathExists == False:
+      pageStatus = pageStatus + "temp output path not a directory. "
+      statusCheck = False 
+      
+     if dataCollStatus == 1:
+      pageStatus = pageStatus + "ERROR: you must stop data collection before saving changes here. "
       statusCheck = False
 
 # save channel config to config file
@@ -801,17 +802,20 @@ def desetup():
        if(is_numeric(fstr)):
          fval = float(fstr)
          if(fval < 0.1 or fval > 54.0):
-           theStatus = theStatus +  "Freq for channel "+ str(ch) + " out of range;"
+           pageStatus = pageStatus +  "Freq for channel "+ str(ch) + " out of range. "
            statusCheck = False
          else:
           parser.set('channels','f' + str(ch), result.get(f))
        else:
-         theStatus = theStatus + "Freq for channel " + str(ch) + " must be numeric;"
+         pageStatus = pageStatus + "Freq for channel " + str(ch) + " must be numeric."
          statusCheck = False
   
      if(statusCheck == True):
-       print("Save config; ringbuffer_path=" + result.get('ringbufferPath'))
+       print("Save config; ringbuffer_path=" +   result.get('ringbufferPath'))
        parser.set('settings', 'ringbuffer_path', result.get('ringbufferPath'))
+       parser.set('settings', 'fftoutputpath',   result.get('fftoutputpath'))
+       parser.set('settings', 'firehoser_path' , result.get('firehosepath'))
+       parser.set('settings', 'temp_path',       result.get('temppath'))
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
@@ -851,51 +855,56 @@ def desetup():
  #    send_to_mainctl(configCmd,1);
      if(statusCheck == True):
         send_configuration()
-        theStatus = "OK"
+        pageStatus = "Setup saved."
      else:
-        theStatus = theStatus + " NOT SAVED"
+        pageStatus = pageStatus + " NOT SAVED"
 
    print("return to desetup")
    return render_template('desetup.html',
-	      ringbufferPath = ringbufferPath, channelcount = channelcount,
-          form = form, status = theStatus,
-          channellistform = channellistform)
+	  ringbufferPath = ringbufferPath, channelcount = channelcount,
+      channellistform = channellistform, fftoutputpath = fftoutputpath,
+      firehosepath = firehosepath, temppath = temppath,
+      form = form, status = pageStatus)
 
 @app.route("/uploading", methods = ['POST','GET'])
 def uploading():
    global theStatus, theDataStatus
+   pageStatus = "Changes do not take effect until you click Save."
    form = ThrottleControlForm()
+   result = request.form
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
-   if request.method == 'GET':
+   if request.method == 'GET' or result.get('csubmit') == "Discard Changes" :
      form.throttle.data = parser['settings']['throttle']
-
      centralURL =     parser['settings']['central_host']
      centralPort =    parser['settings']['central_port']
-     
-     return render_template('uploading.html', centralURL = centralURL,
-	  centralPort = centralPort, form = form)
+     throttle =       parser['settings']['throttle']
+     return render_template('uploading.html', throttle = throttle, centralURL = centralURL,
+	  centralPort = centralPort, form = form, status = pageStatus)
 
+   statusCheck = True
    if request.method == 'POST':
-     result = request.form
-     print("F: result=", result.get('csubmit'))
-     if result.get('csubmit') == "Discard Changes":
-       print("F: CANCEL")
-     else:
-       print("F: result of throttle post =")
-       throttle= ""
+     
+     if result.get('centralPort').isnumeric() == False :
+       pageStatus = "Central port setting must be numeric. "
+       statusCheck = False
+       
+     if statusCheck == True:
        parser.set('settings', 'throttle', result.get('throttle'))
        parser.set('settings', 'central_host', result.get('centralURL'))
        parser.set('settings', 'central_port', result.get('centralPort'))
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
-       
+       pageStatus = "Saved."
+     else:
+       pageStatus = pageStatus + "NOT SAVED."
+   form.throttle.data = parser['settings']['throttle']
    centralURL =     parser['settings']['central_host']
    centralPort =    parser['settings']['central_port']
-   ringbufferPath = parser['settings']['throttle']
+   throttle =       parser['settings']['throttle']
    return render_template('uploading.html', throttle = throttle, centralURL = centralURL,
-	  centralPort = centralPort, form = form)
+	  centralPort = centralPort, form = form, status = pageStatus)
 
 @app.route("/callsign", methods = ['POST','GET'])
 def callsign():
@@ -903,6 +912,7 @@ def callsign():
    form = CallsignForm()
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   pageStatus = "Changes do not take effect until you click Save."
    if request.method == 'GET':
      c0 = parser['monitor']['c0']
      c1 = parser['monitor']['c1']
@@ -917,17 +927,42 @@ def callsign():
      g4 = parser['monitor']['g4']
      g5 = parser['monitor']['g5']
      return render_template('callsign.html', form = form,
+      status = pageStatus,
       c0 = c0, c1 = c1, c2 = c2, c3 = c3, c4 = c4, c5 = c5,
 	  g0 = g0, g1 = g1, g2 = g2, g3 = g3, g4 = g4, g5 = g5)
+	  
    if request.method == 'POST':
      result = request.form
+     pageStatus = ""
+     statusCheck = True
      print("F: result=", result.get('csubmit'))
      if result.get('csubmit') == "Discard Changes":
        print("F: CANCEL")
      else:
-       print("F: result of callsign post =")
-       ringbufferPath = ""
-
+#print("F: result of callsign post =")
+       for count in range(0,5):
+         testgrid = result.get('g'+str(count))
+     #    print("grid check 0 ",count,testgrid, len(testgrid))
+         if(len(testgrid) > 0 and testgrid != "None"):  # user has entered something here
+      #     print("now try it")
+           try:
+         #    print("grid check ",count,testgrid)
+             t = (0,0)
+             t = locator.locator_to_latlong(testgrid)
+          #   print("locator output = ",t)
+           except:
+             pageStatus = pageStatus + "Grid # " + str(count) + " not a valid grid square. "
+             statusCheck = False
+     #      finally: 
+     #        print("hit finally, t=",t)
+     #        if ( t == (0,0)):
+     #          print("trigger rejection")
+     #          pageStatus = pageStatus + "Grid # " + str(count) + " not a valid grid square. "
+     #          statusCheck = False
+       
+      
+     if(statusCheck == True):
+       pageStatus = "Saved."
        parser.set('monitor', 'c0', result.get('c0'))
        parser.set('monitor', 'c1', result.get('c1'))
        parser.set('monitor', 'c2', result.get('c2'))
@@ -957,6 +992,7 @@ def callsign():
      g5 = parser['monitor']['g5']
      
      return render_template('callsign.html', form = form,
+      status = pageStatus,
       g0 = g0, g1 = g1, g2 = g2, g3 = g3, g4 = g4, g5 = g5,
 	  c0 = c0, c1 = c1, c2 = c2, c3 = c3, c4 = c4, c5 = c5)
 
