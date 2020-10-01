@@ -21,11 +21,12 @@ class MainControlForm(FlaskForm):
   propWS =    BooleanField('WSPR',default=False)
   startprop = SubmitField("Start Monitoring")
   stopprop  = SubmitField("Stop Monitoring")
+  gpsdo =     BooleanField('GPSDO',default=True)
 
 class ChannelForm(Form):
   channel_ant = SelectField('AntennaPort',choices = [('0','0'),('1','1')])
   channel_freq = FloatField('CH_freq',[validators.DataRequired(),validators.NumberRange(min=0.1, max = 54, message=(u'Freq out of range'))])
-
+  
 class ChannelListForm(Form):
   channels = FieldList(FormField(ChannelForm))
 

@@ -261,14 +261,12 @@ def sdr():
       # TODO: here, add code to stop all activities & reflect that in config
         return redirect('/restart')
         
-
  # Check for errors and missing configurations
 
       if (form.modeR.data == True and form.modeF.data == True):
         print("F: error - user selected both ringbuffer and firehose")
         form.errline = "Select EITHER Ringbuffer or Firehose mode"
         return render_template('tangerine.html', form = form)
-
 
 # Other checks to be added include - paths/directories exist for all selected outputs;
 #  URL for Central Control; at least one subchannel setup exists
@@ -337,22 +335,16 @@ def sdr():
           # current settings.
 
               now = datetime.now()
-         #     subdir = "D" + now.strftime('%Y%m%d%H%M%S')
-         #    subdir = "TangerineData"
-              subdir = "" # temporary - remove add'l subdirectory path mod
-              print("F: SEND START DATA COLLECTION COMMAND, subdirectory=" + subdir)
+ 
               if(form.mode.data == 'firehoseR'):
-                metadataPath = parser['settings']['firehoser_path'] + "/" + subdir
+                metadataPath = parser['settings']['firehoser_path']
               else:
-                metadataPath = parser['settings']['ringbuffer_path'] + "/" + subdir
+                metadataPath = parser['settings']['ringbuffer_path']
            #   print("metadata path="+metadataPath)
+              print("F: SEND START DATA COLLECTION COMMAND, directory=" + metadataPath)
               returned_value = os.system("mkdir "+ metadataPath)
               print("F: after metadata creation, retcode=",returned_value)
-              
-          # Command mainctl to trigger DE to start sending ringbuffer data
-          # This always refers to channel zero (i.e., subchannels supported)
-           #   send_to_mainctl(START_DATA_COLL + "," + subdir,1)
-          #    send_to_mainctl(START_DATA_COLL,1)
+
           
           # kill any running rgrcvr processes
               returned_value = os.system("pwd")
@@ -362,9 +354,7 @@ def sdr():
               returned_value = os.system("./rgrcvr &")      
               print("F: after start of rgrcvr, retcode=",returned_value) 
               send_to_DE(0,START_DATA_COLL + " 0")         
-          
-          
-          
+                    
               if(parser['settings']['snapshotter_mode'] == "On"):
                 statusSnap = 1
               else:
@@ -545,6 +535,15 @@ def chkstat():
    print("Sending channel req")
    channel_request()
    return redirect('/')
+   
+def cleanup(inputstring):
+  print("input string='" + inputstring + "'")
+  inputstring = inputstring.replace('"','')
+  inputstring = inputstring.replace("'","")
+  inputstring = inputstring.replace(" ","_")
+  print("cleaned input string='" + inputstring + "'")
+  return(inputstring)
+
 
 @app.route("/config",methods=['POST','GET'])
 def config():
@@ -580,8 +579,12 @@ def config():
        parser.set('profile', 'node',        result.get('theNode'))
        parser.set('profile', 'callsign',    result.get('theCall'))
        parser.set('profile', 'grid',        result.get('theGrid'))
-       parser.set('profile', 'antenna0',    result.get('antenna1'))
-       parser.set('profile', 'antenna1',    result.get('antenna2'))
+       parser.set('profile', 'antenna0',    cleanup(result.get('antenna1')))
+       parser.set('profile', 'antenna1',    cleanup(result.get('antenna2')))
+       if(form.gpsdo.data == True):
+         parser.set('profile','gpsdo', "Yes")
+       else:
+         parser.set('profile','gpsdo', "No")
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
@@ -599,8 +602,13 @@ def config():
    theGrid =      parser['profile']['grid']
    antenna1 =     parser['profile']['antenna0']
    antenna2 =     parser['profile']['antenna1']
+   if(parser['profile']['gpsdo'] == "Yes"):
+       form.gpsdo.data = True
+   else:
+       form.gpsdo.data  = False
+   gpsdo =        parser['profile']['gpsdo']
    print("F: token = " + theToken)
-   return render_template('config.html', theToken = theToken,
+   return render_template('profile.html', theToken = theToken,
      theLatitude = theLatitude, theLongitude = theLongitude,
      theNode = theNode, theCall = theCall, theGrid = theGrid,
      antenna1 = antenna1, antenna2 = antenna2, form=form,
@@ -611,7 +619,6 @@ def config():
 def danger():
    global theStatus, theDataStatus
    form = MainControlForm()
-   
    
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
