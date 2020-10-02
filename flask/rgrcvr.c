@@ -116,7 +116,7 @@ static int recv_port_status_ft8 = 0;
 #define FFT_N 1048576
 //#define FFT_N 8192
 //#define FFT_N 4096
-#define CENTER 1026729
+#define CENTER 982500
 #define WIDTH 200
  
 static int snapcount = 0;
@@ -238,7 +238,7 @@ void* FFTanalyze(void *arg){  // argument is a struct with all fftwf data
 #ifdef FULLOUTPUT
 
 // this section is for outputting entire histogram in correct order
-  for(int i=FFT_N/2;i >=0;i--)  // frequencies above center freq. ignoring DC
+  for(int i=FFT_N/2;i >=0;i--)  // frequencies below center freq. ignoring DC
    {
     M = sqrt( creal(threadPkg->FFT_data[i])*creal(threadPkg->FFT_data[i])+cimag(threadPkg->FFT_data[i])*cimag(threadPkg->FFT_data[i]) );
     if(M > maxval)
@@ -315,7 +315,7 @@ void* FFTanalyze(void *arg){  // argument is a struct with all fftwf data
 
   printf("RG: maxbin = %li, maxval = %f\n",maxbinT,maxvalT);
 //  fprintf(fftfp,"%li,%f,\n",maxbin,maxval);
-  fprintf(fftfp,"%li,%f,\n",CENTER - maxbin,maxval);
+  fprintf(fftfp,"%li,%f,%f,\n",CENTER - maxbin,maxval,maxbin);
   fclose(fftfp);
 
 }

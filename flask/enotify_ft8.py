@@ -12,56 +12,100 @@ from datetime import datetime
 print ("#args=",len(sys.argv))
 print ("args = ",str(sys.argv))
 
+p = open('/home/ubuntu/Documents/smtp2go.pw','r')
+smtp2gopw = p.read()
+smtp2gopw = smtp2gopw[0:(len(smtp2gopw) - 1)] # strip the CR from end
+print("pw='"+ smtp2gopw + "'")
+
 parser = configparser.ConfigParser(allow_no_value=True)
 parser.read('config.ini')
 ft8path = parser['settings']['ramdisk_path'] + "/FT8/"
 print("path=",ft8path)
 
+calltarget = []
+for call in range(0,5):
+  c = parser['monitor']['c' + str(call)]
+  if( c != 'None' and len(c) > 0):
+    calltarget.append(c)
+
+print("call list",calltarget)
 #decoded_file = open(ft8path + "decoded" + sys.argv[1] + ".txt" )
 #line = decoded_file.readline()
 #print(line)
 #decoded_file.close()
 #spot = line.split()
 
-
-with open(ft8path + "decoded" + sys.argv[1] + ".txt" ,'r') as f:
+calllist = []
+freqlist = []
+timelist = []
+gridlist = []
+with open(ft8path + "decoded" + sys.argv[1] + "z.txt" ,'r') as f:
   for line in f:
     spot = line.split()  
     print(len(spot)) # len = 8 means a grid was received
     print("date ",spot[0]," time ",spot[1], " freq ", spot[5], " call ", spot[6])
     print("yr:" + spot[0][0:2] + "  mo:" + spot[0][2:4] + " dy:" + spot[0][4:6] + " hr:" + spot[1][0:2] + " min:" + spot[1][2:4])
+    datetime = "yr:" + spot[0][0:2] + "  mo:" + spot[0][2:4] + " dy:" + spot[0][4:6] + " hr:" + spot[1][0:2] + " min:" + spot[1][2:4] + " Z "
     print("call " + spot[6] + " freq:", int(spot[5]) / 1000000.0 ,"MHz")
     freq = int(spot[5]) / 1000000.0
-    datetime =  "20" +  spot[0][0:2] + "/" + spot[0][2:4] + "/" + spot[0][4:6] + "time: " + spot[1][0:2] + ":" + spot[1][2:4] + " Z"
+    datetime =  "20" +  spot[0][0:2] + "/" + spot[0][2:4] + "/" + spot[0][4:6] + " time: " + spot[1][0:2] + ":" + spot[1][2:4] + " Z"
     print(".")
+    calllist.append(spot[6])
+    freqlist.append(freq)
+    timelist.append(datetime)
+    if(len(spot) == 8):
+      gridlist.append(spot[7])
+    else:
+      gridlist.append("No grid")
 
+print("calls heard", calllist)
+detected_list = []
+h = -1
+for heard in calllist:
+  h = h + 1
+  for target in calltarget:
+    if(heard == target):
+      print("target detected:", target)
+      detected_list.append(heard + " on " + str(freqlist[h]) + " at " + timelist[h] + " loc.: " + gridlist[h])
+      
+    
+#print("detected list:")
+#print(detected_list)
+report = ""
+for msg in detected_list:
+  report = report + (msg + "\n")
+  
+print("report:")
+print(report)
+
+
+if(len(detected_list) > 0): 
 # SMTP stuff
 
 #Establish SMTP Connection
-s = smtplib.SMTP('smtp2go.com', 2525) 
-print("start tls") 
+  s = smtplib.SMTP('smtp2go.com', 2525) 
+  print("start tls") 
 #Start TLS based SMTP Session
-s.starttls() 
-print("login")
+  s.starttls() 
+  print("login")
 #Login Using Your Email ID & Password
-s.login("engelke77@bellsouth.net", smtp2gopw)
+  s.login("engelke77@bellsouth.net", smtp2gopw)
+
+  sender = "engelke77@bellsouth.net"
+  receivers = ['engelke77@bellsoutn.net']
 
 
-
-sender = "engelke77@bellsouth.net"
-receivers = ['engelke77@bellsoutn.net']
-
-message = """From: From Your Tangerine <engelke77@bellsouth.net>
+  message = """From: From Your Tangerine <engelke77@bellsouth.net>
 To: To AB4EJ <engelke77@bellsouth.net>
-Subject: SMTP e-mail test
+Subject: Station(s) heard
 
-Station """ + spot[6] + """ heard at """ + datetime + """ on """ + str(freq) + """ MHz 
+ """ + report + """ --end-- 
 """
-print("send")
-try:
-   s.sendmail("engelke77@bellsouth.net","engelke77@bellsouth.net",message)
-   s.quit()
-except SMTPException:
+  print("send")
+  try:
+     s.sendmail("engelke77@bellsouth.net","engelke77@bellsouth.net",message)
+     s.quit()
+  except SMTPException:
    print ("Error: unable to send email")
 
 

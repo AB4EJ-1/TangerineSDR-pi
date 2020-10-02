@@ -283,8 +283,11 @@ int main() {
            printf("ft8 decode ran, rc = %i\n",ret);
            if(upload == 1)
              {
+             sprintf(mycmd,"nice -n9 awk '!seen[$7]++' %s/FT8/decoded%i.txt > %s/FT8/decoded%iz.txt",pathToRAMdisk,streamID,pathToRAMdisk,streamID);
+             printf("Removing dupes: \n %s \n",mycmd);
+             ret = system(mycmd);
              printf("Upload to PSKReporter\n");
-             sprintf(mycmd,"nice -n9 ./upload-to-pskreporter %s %s %s %s/FT8/decoded%d.txt", 
+             sprintf(mycmd,"nice -n9 ./upload-to-pskreporter %s %s %s %s/FT8/decoded%dz.txt", 
                 mycallsign, mygrid, myantenna0, pathToRAMdisk, streamID);
              printf("Issue command: %s\n",mycmd);
              ret = system(mycmd);
