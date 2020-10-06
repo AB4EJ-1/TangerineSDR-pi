@@ -116,7 +116,7 @@ static int recv_port_status_ft8 = 0;
 #define FFT_N 1048576
 //#define FFT_N 8192
 //#define FFT_N 4096
-#define CENTER 982500
+#define CENTER 982582
 #define WIDTH 200
  
 static int snapcount = 0;
@@ -176,6 +176,7 @@ static config_setting_t *setting;
 static char data_path[100];
 static char temp_path[100];
 static char the_node[20];
+static char the_grid[20];
 
 ////////////////  FFT Analyze ///////////////////////////////////
 // This will be called as a thread for each subchannel when enough samples
@@ -185,10 +186,11 @@ void* FFTanalyze(void *arg){  // argument is a struct with all fftwf data
   FILE *fftfp;
   time_t T = time(NULL);
   struct tm tm = *gmtime(&T);  // UTC
-  char FFToutputFile[75] = ""; 
+  char FFToutputFile[100] = ""; 
+  sprintf(FFToutputFile,"%s/%04d-%02d-%02d_%s_%s_T1_%f.csv", FFToutputPath,tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday,  the_node, the_grid, threadPkg->centerFrequency);
   printf("RG: start FFT for subchannel %i, freq %f \n",threadPkg->channelNo, threadPkg->centerFrequency);
   printf("RG: opening fft file: %s, time=",FFToutputFile);
-  sprintf(FFToutputFile,"%s/fft%i.csv",FFToutputPath,threadPkg->channelNo);  
+//  sprintf(FFToutputFile,"%s/fft%i.csv",FFToutputPath,threadPkg->channelNo);  
   fftfp = fopen(FFToutputFile,"a");
 //  fprintf(fftfp,"%f,%04d-%02d-%02d %02d:%02d:%02d,",threadPkg->centerFrequency, tm.tm_year+1900, tm.tm_mday, tm.tm_mon+1, tm.tm_hour, tm.tm_min, tm.tm_sec);
   printf("%04d-%02d-%02d %02d:%02d:%02d \n", tm.tm_year+1900, tm.tm_mday, tm.tm_mon+1, tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -417,6 +419,18 @@ void* firehose_uploader(void *threadid) {
     printf("node CONFIG RESULT = '%s'\n",configresult);
     strcpy(the_node,configresult);
     }
+    
+  num_items = rconfig("grid",configresult,0);
+  if(num_items == 0)
+    {
+    printf("ERROR - grid setting not found in config.ini\n");
+    }
+  else
+    {
+    printf("grid CONFIG RESULT = '%s'\n",configresult);
+    strcpy(the_grid,configresult);
+    }
+    
   sleep(20);
   while(1)
    {
@@ -481,6 +495,31 @@ int main() {
     // Later, if DE sends a different# subchannels in data, error message
     numchannels = atoi(configresult);
     }
+  // get node and grid  
+  num_items = rconfig("node",configresult,0);
+  if(num_items == 0)
+    {
+    printf("ERROR - node setting not found in config.ini\n");
+    }
+  else
+    {
+    printf("node CONFIG RESULT = '%s'\n",configresult);
+    strcpy(the_node,configresult);
+    }
+    
+  num_items = rconfig("grid",configresult,0);
+  if(num_items == 0)
+    {
+    printf("ERROR - grid setting not found in config.ini\n");
+    }
+  else
+    {
+    printf("grid CONFIG RESULT = '%s'\n",configresult);
+    strcpy(the_grid,configresult);
+    }
+    
+    
+    
 
   // Is ringbuffer mode set to "On" in config?
   // Get the config items needed for ringbuffer mode

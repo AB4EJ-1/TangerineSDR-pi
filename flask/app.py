@@ -40,6 +40,7 @@ from wtforms import validators, ValidationError
 from flask_wtf import CSRFProtect
 
 from pyhamtools import locator
+import requests
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'here-is-your-secret-key-ghost-rider'
@@ -205,7 +206,77 @@ def send_configuration():
   send_to_DE(2,msg)
   return
   
-  
+# Heartbeat thread - serves multiple purposes. Lets Central Host know thst this node is online;
+# Also looks for a Data Request response from Central, indicating that some part of ringbuffer
+# is to be uploaded.  
+def heartbeat_thread(threadname,a):
+  parser = configparser.ConfigParser(allow_no_value=True)
+  parser.read('config.ini')
+  central_host = parser['settings']['central_host']
+  central_port = parser['settings']['central_port']
+  heartbeat_interval = int(parser['settings']['heartbeat_interval'])
+  ringbuffer_path = parser['settings']['ringbuffer_path']
+  RAMdisk_path = parser['settings']['ramdisk_path']
+  upload_path = parser['settings']['upload_path']
+  theNode = parser['profile']['node']
+  theToken = parser['profile']['token_value']
+  throttle = parser['settings']['throttle']
+  DR_pending = parser['settings']['dr_pending']
+  print("DR # pending=",DR_pending)
+  URL = "http://" + central_host + ":" + central_port + "/apikey/" + theToken
+  PARAMS = "node=" + theNode 
+  session = requests.Session()
+  while(1):
+    print("  V V V V V     HB thread    V V V V V")
+    print("send: '" + URL + "'")
+    r = session.get(url = URL, params = PARAMS)
+    print("HB response:", r.text)
+    response = r.text.split()
+    # in a Data Request, we expect:   DR  (Data Request#) (Start datteime) (End datetime)
+    if(response[0] == "DR"):
+
+      print("Data request#",response[1]," received from Central, START=",response[2]," END=",response[3])
+      print("DR pending = '" + DR_pending + "'")
+      if(int(DR_pending) == int(response[1])):  # we have already started (or completed) processing this one
+        print("DR# ",response[1]," already processed; ignoring duplicate request")
+        time.sleep(heartbeat_interval)
+        continue;
+      else:  # keep track of most recently handled Data Request no.
+        DRstatus = "Data request# " + response[1] + " received from Central, START=" + response[2] + " END=" + response[3]
+        requestNo = response[1]
+        command = 'logger "' + DRstatus + '"'
+        os.system(command) 
+        parser.set('settings','dr_pending',requestNo)
+        fp = open('config.ini','w')
+        parser.write(fp)
+        fp.close()
+      command = "drf ls " + ringbuffer_path + " -r -s " + response[2] + " -e " + response[3] + \
+        " > " + RAMdisk_path + "/dataFileList"
+      print("Ringbuffer content check command = ",command)
+  #    returned_text = subprocess.check_output(command, shell = True, universal_newlines = True)
+      os.system(command)
+  #    print("Result of command: ",returned_text)
+      a = datetime.now()
+
+      fn = "%i-%i-%i_%i:%i:%iZ" %(a.year, a.month,a.day,a.hour, a.minute ,+ a.second)
+      
+      command = "./filecompress.sh " + ringbuffer_path + " " + RAMdisk_path + "/dataFileList " + \
+        upload_path + "/" + fn + "_" + theNode + "_DRF.tar"
+      print("compress command: ", command)
+      os.system(command)
+      
+      command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + theNode + "/sftp-test;exit' -u " + theNode + ",odroid " + "sftp://" + central_host
+      print("Upload command = '" + command + "'")
+      print("Starting upload...")
+      os.system(command)
+      
+      
+    
+    
+    
+    time.sleep(heartbeat_interval)
+    
+  return 
 
     
 
@@ -514,9 +585,10 @@ def restart():
 # spin off this process asynchornously (notice the & at the end)
   returned_value = os.system(rcmd)
   print("F: ringbuffer control activated")
-# start heartbeat thread that pings mainctl at intervals
- #  thread1 = hbThread(1, "pingThread-1",1)
- #  thread1.start()
+# start heartbeat thread that pings Central Control
+ # threadname = "HB"
+  _thread.start_new_thread(heartbeat_thread, (0,0,))
+   
   return redirect('/')
 
 @app.route("/datarates")
