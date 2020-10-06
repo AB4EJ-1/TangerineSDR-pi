@@ -8,7 +8,6 @@ import os.path, time
 import subprocess
 from subprocess import Popen, PIPE
 import configparser
-import smtplib
 
 import sys, platform
 import ctypes, ctypes.util
@@ -269,15 +268,10 @@ def heartbeat_thread(threadname,a):
       print("Upload command = '" + command + "'")
       print("Starting upload...")
       os.system(command)
-      
-      
-    
-    
-    
+        
     time.sleep(heartbeat_interval)
     
   return 
-
     
 
 #####################################################################
@@ -416,7 +410,6 @@ def sdr():
               returned_value = os.system("mkdir "+ metadataPath)
               print("F: after metadata creation, retcode=",returned_value)
 
-          
           # kill any running rgrcvr processes
               returned_value = os.system("pwd")
               print("kill previous rgrcvr, if any")
@@ -464,7 +457,19 @@ def sdr():
       if(form.stopDC.data ):
             send_to_DE(0,STOP_DATA_COLL + " 0") 
             returned_value = os.system("killall -9 rgrcvr")
-            print("F: after kill of ft8rcvr, retcode=",returned_value) 
+            print("F: after kill of ft8rcvr, retcode=",returned_value)
+            fhmode = parser['settings']['firehoser_mode']
+            fhdirectory = parser['settings']['firehoser_path']
+            fhtemp = parser['settings']['temp_path']
+            if(fhmode == "On"): # clean up all resideuals from the firehose-R transfers
+              command = "rm -r " + fhdirectory
+              os.system(command)
+              command = "mkdir " + fhdirectory
+              os.system(command)
+              command = "rm -r " + fhtemp
+              os.system(command)
+              command = "mkdir " + fhtemp
+              os.system(command)
             dataCollStatus = 0
             statusRG = 0
             statusSnap = 0
@@ -574,10 +579,26 @@ def restart():
   print("List of DE configuration ports:", DE_IP_portC)
   send_configuration()
 
-
 # ringbuffer setup
   ringbufferPath =    parser['settings']['ringbuffer_path']
   ringbufferMaxSize = parser['settings']['ringbuf_maxsize']
+  # create any missing directories
+  rcmd = "mkdir " + ringbufferPath
+  os.system(rcmd)  
+  rcmd = "mkdir " + parser['settings']['fftoutput_path']
+  os.system(rcmd)
+  rcmd = "mkdir " + parser['settings']['upload_path']
+  os.system(rcmd)
+  rcmd = "mkdir " + parser['settings']['temp_path']
+  os.system(rcmd)
+  rcmd = "mkdir " + parser['settings']['firehoser_path']
+  os.system(rcmd)
+  rcmd = "mkdir " + parser['settings']['ramdisk_path'] + "/FT8"
+  os.system(rcmd)
+  rcmd = "mkdir " + parser['settings']['ramdisk_path'] + "/WSPR"
+  os.system(rcmd)
+  
+  
 # halt any previously started ringbuffer task(s)
   rcmd = 'killall -9 drf'
   returned_value = os.system(rcmd)
@@ -911,7 +932,7 @@ def desetup():
      if(statusCheck == True):
        print("Save config; ringbuffer_path=" +   result.get('ringbufferPath'))
        parser.set('settings', 'ringbuffer_path', result.get('ringbufferPath'))
-       parser.set('settings', 'fftoutputpath',   result.get('fftoutputpath'))
+       parser.set('settings', 'fftoutputpath',   result.get('fftoutput_path'))
        parser.set('settings', 'firehoser_path' , result.get('firehosepath'))
        parser.set('settings', 'temp_path',       result.get('temppath'))
        fp = open('config.ini','w')
@@ -1410,7 +1431,7 @@ def ft8list():
     for fno in range(len(band)):
 
  #    fname = '/mnt/RAM_disk/FT8/decoded' + str(fno) +'.txt'
-     fname = parser['settings']['ramdisk_path'] + "/FT8/decoded"  + str(fno) +'.txt'
+     fname = parser['settings']['ramdisk_path'] + "/FT8/decoded"  + str(fno) +'z.txt'
     # print("checking file",fname)
      dm = time.ctime(os.path.getmtime(fname))
    #  dm = "d"
