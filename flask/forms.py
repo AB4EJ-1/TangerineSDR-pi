@@ -124,6 +124,7 @@ class CallsignForm(FlaskForm):
   submit = SubmitField('Save callsigns')
 
 class ServerControlForm(FlaskForm):
+  notify =    BooleanField('notify',default=False)
   emailto = StringField('email from',[
     validators.Length(min=6, message=(u'Too short for email addr')),
     validators.Email(message=(u'Email_from Not a valid address')),

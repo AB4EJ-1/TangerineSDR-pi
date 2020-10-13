@@ -55,6 +55,7 @@ int upload = 0;      // set to 1 if user wants to upload spots to PSKReporter
 
 float chfrequency[8];
 int ft8active[8];      // indicates if ft8 has started for this streamNo
+int notification;
 
 //static char pathToRAMdisk[100] = "/mnt/RAM_disk";  // temp hard-coded
 
@@ -68,6 +69,7 @@ int main() {
   char mygrid[20];
   char myantenna0[50];  // there is length limit on these in upload-to-pskreporter
   char myantenna1[50];
+  notification = 0;
 
   int num_items = 0;
   printf("ft8rcvr start\n");
@@ -94,6 +96,9 @@ int main() {
     strcpy(mycallsign,configresult);
     } 
   printf("callsign =%s\n",mycallsign);
+  
+
+  
 
   num_items = rconfig("grid",configresult,0);
   if(num_items == 0)
@@ -292,6 +297,26 @@ int main() {
              printf("Issue command: %s\n",mycmd);
              ret = system(mycmd);
              printf("psk upload ran, rc = %i\n",ret);
+             
+             num_items = rconfig("notification",configresult,0);
+             if(num_items == 0)
+               {
+               printf("ERROR - notification setting not found in config.ini\n");
+               }
+             else
+               {
+               printf("notification CONFIG RESULT = '%s'\n",configresult);
+             if (strncmp(configresult, "On",2))
+               notification = 1;
+              } 
+              printf("notification = %i\n",notification);
+                     
+             if (notification)
+               {
+               sprintf(mycmd,"python3 enotify_ft8.py %i",streamID);
+               printf("Run notification pkg: %s",mycmd);
+               ret = system(mycmd);
+               }
              }
           
            }

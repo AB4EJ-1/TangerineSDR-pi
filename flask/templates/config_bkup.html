@@ -48,7 +48,7 @@ fieldset {
         <a href="/notification">Notification</a><br>
         <a href="/propagation">FT8 Setup</a><br>
         <a href="/propagation2">WSPR Setup</a><br>
-        <a href="/danger">Danger Zone </a><br>
+        <a href="/danger">Danger Zone </a>
         <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
 	  </fieldset> </div>
 	  
@@ -57,7 +57,7 @@ fieldset {
 
 	  <div style="display: table-cell;" align="left"">
 
-      <form style="margin-left:10px;" action = "/config" method = "POST"> {{ form.hidden_tag() }} 
+      <form style="margin-left:10px;" action = "http://localhost:5000/config" method = "POST"> {{ form.hidden_tag() }} 
        <input type = "submit" name = "csubmit" value = "Save" />&nbsp;
         <input type = "submit" name = "csubmit"  value = "Discard Changes" />&nbsp;
         {{ status }}<br>

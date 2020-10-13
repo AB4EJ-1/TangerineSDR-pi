@@ -63,10 +63,17 @@ fieldset {
 	   <td class="bgtangerine" width="10%" valign="top" align="left">
        Technical Configurations. We suggest you not change these unless you really know what you are doing.
 <br>
-      <form action = "http://localhost:5000/danger" method = "POST"> {{ form.hidden_tag() }} 
+      <form action = "/danger" method = "POST"> {{ form.hidden_tag() }} 
          &nbsp;&nbsp;<input type = "submit" name = "csubmit" value = "Save" /> &nbsp;
          <input type = "submit" name = "csubmit"  value = "Discard Changes" /><br>
-         Changes do not take effect until you click Save.
+         &nbsp; {{ status }}
+         {% with messages = get_flashed_messages() %}
+          {% if messages %}
+           {% for message in messages %}
+            {{ message }}
+           {% endfor %}
+          {% endif %}
+         {% endwith %}
       <p style="font-size: 14px; margin-left:20px;" >
       <b> Digital RF Settings</b><br>
          Subdirectory Cadence (secs.) <input type = "text" name = "subdircadence" value = {{ subdircadence }} />&nbsp;(numeric) <br>
@@ -85,7 +92,7 @@ fieldset {
        <br>
        <fieldset style="width:800px; margin-left:5px; font-size:14px;" align="left">
        The Nuclear Option: If you did something that makes your Tangerine inoperable, you may be able to fix it by restoring the configuration from initial settings; but remember, if you use that you will <i>lose all settings</i> you have entered (including those on other configuration pages such as frequency setting, etc.), <b>and this cannot be undone.</b>
-		 <p class="links"><b><a href="/desetup">Restore to default configuration </b><br>
+		 <p class="links"><b><a href="/restore">Restore to default configuration </b><br>
 		 </fieldset>
 
 

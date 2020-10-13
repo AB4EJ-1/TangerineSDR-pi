@@ -116,7 +116,7 @@ static int recv_port_status_ft8 = 0;
 #define FFT_N 1048576
 //#define FFT_N 8192
 //#define FFT_N 4096
-#define CENTER 982582
+#define CENTER 976026
 #define WIDTH 200
  
 static int snapcount = 0;
@@ -317,7 +317,7 @@ void* FFTanalyze(void *arg){  // argument is a struct with all fftwf data
 
   printf("RG: maxbin = %li, maxval = %f\n",maxbinT,maxvalT);
 //  fprintf(fftfp,"%li,%f,\n",maxbin,maxval);
-  fprintf(fftfp,"%li,%f,%f,\n",CENTER - maxbin,maxval,maxbin);
+  fprintf(fftfp,"%li,%f,%ld,\n",CENTER - maxbin,maxval,maxbin);
   fclose(fftfp);
 
 }

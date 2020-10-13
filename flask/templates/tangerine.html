@@ -107,10 +107,11 @@ fieldset {
 	  </table><br>
 
 
-     <form style="width:500px;margin-left:5px" width = 90% action = "/" method = post>
+     <form style="width:600px;margin-left:5px" width = 90% action = "/" method = post>
        <table>
-        <td> 
-         <fieldset style="width:300px" align="left" >
+        <td><div style = font-size:12px;> Changes take effect only after you click Save.
+        <div style = font-size:15px;> 
+         <fieldset style="width:300px;" align="left" >
             <legend>Data Collection</legend>
             {{ form.hidden_tag() }}    
             <div style = font-size:15px; font-weight:bold; margin-left:100px;>
@@ -119,7 +120,7 @@ fieldset {
                {{ form.modeF }}Continuous Upload(Firehose-R)<br>
               <input type = "submit" name = "csubmit" value = "Save" />
                {{ form.startDC }}
-               {{ form.stopDC  }}	 <br>
+               {{ form.stopDC  }}	 <br><br>
                {{ form.restartDE }}&nbsp; Use this (only) to recover if DE does not start automatically or halts
             </div>
             <font color ="red">{{ form.errline }}</font>

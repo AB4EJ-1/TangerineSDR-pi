@@ -1,3 +1,26 @@
+# Copyright (C) 2019, 2020 The University of Alabama, Tuscaloosa, AL 35487
+# Author: William (Bill) Engelke, AB4EJ
+# With funding from the UA Center for Advanced Public Safety and 
+# The National Science Foundation.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+#
+# External packages:
+#  hdf5
+#  Digital_RF
+#  sshpass
+
 from flask import Flask, flash, redirect, render_template, request, session, abort, jsonify, Response
 import simplejson as json
 import socket
@@ -20,7 +43,6 @@ import datetime
 from datetime import datetime
 import threading
 
-#from array import *
 from email.mime.multipart import MIMEMultipart 
 from email.mime.text import MIMEText 
 from extensions import csrf
@@ -35,7 +57,6 @@ from forms import CallsignForm
 from forms import ChannelControlForm, ChannelForm, ChannelListForm
 
 from wtforms import validators, ValidationError
-
 from flask_wtf import CSRFProtect
 
 from pyhamtools import locator
@@ -270,7 +291,6 @@ def heartbeat_thread(threadname,a):
       os.system(command)
         
     time.sleep(heartbeat_interval)
-    
   return 
     
 
@@ -323,7 +343,7 @@ def sdr():
       
 
       if(form.restartDE.data):
-      # TODO: here, add code to stop all activities & reflect that in config
+      # TODO: here, add code to stop all activities & refleNonect that in config
         return redirect('/restart')
         
  # Check for errors and missing configurations
@@ -699,7 +719,7 @@ def config():
        form.gpsdo.data = True
    else:
        form.gpsdo.data  = False
-   gpsdo =        parser['profile']['gpsdo']
+   gpsdo = parser['profile']['gpsdo']
    print("F: token = " + theToken)
    return render_template('profile.html', theToken = theToken,
      theLatitude = theLatitude, theLongitude = theLongitude,
@@ -708,35 +728,93 @@ def config():
      status = pageStatus, theElevation = theElevation )
 
 
+
 @app.route("/danger", methods = ['POST','GET'])
 def danger():
    global theStatus, theDataStatus
    form = MainControlForm()
-   
+   pageStatus =""
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
    if request.method == 'POST':
      result = request.form
+     statusCheck = True
      print("subdircadence = " + result.get('subdircadence'))
-     parser.set('settings', 'subdir_cadence'       , result.get('subdircadence'))
-     parser.set('settings', 'drf_compression'      , result.get('drfcompression'))
-     parser.set('settings', 'milliseconds_per_file', result.get('msecperfile'))
-     parser.set('settings', 'discoveryport'        , result.get('DEdiscoveryport'))
-     parser.set('settings', 'configport0'          , result.get('configport0'))
-     parser.set('settings', 'configport1'          , result.get('configport1'))
-     parser.set('settings', 'configport2'          , result.get('configport2'))
+     t = result.get('subdircadence')
+     print("t = " , t, type(t), t.isnumeric())
+     if t.isnumeric()  == False:
+       pageStatus = pageStatus + "Subdirectory cadence not numeric. "
+       print("subdir cadence not numeric: " , t)
+       statusCheck = False
+     else:
+       parser.set('settings', 'subdir_cadence', result.get('subdircadence'))
+     t = result.get('drfcompression')  
+     if t.isnumeric()  == False:
+       pageStatus = pageStatus + "Subdirectory cadence not numeric. "
+       statusCheck = False
+     elif int(t) < 0 or int(t) > 9:
+       pageStatus = pageStatus + "Compression must be between 0 and 9"
+       statusCheck = False
+     else:
+       parser.set('settings', 'drf_compression'      , result.get('drfcompression'))
+     if result.get('msecperfile').isnumeric()  == False:
+       pageStatus = pageStatus + "msec per file not numeric. "
+       statusCheck = False
+     else:
+       parser.set('settings', 'milliseconds_per_file', result.get('msecperfile'))
+     if result.get('DEdiscoveryport').isnumeric()  == False:
+       pageStatus = pageStatus + "DE discovery port not numeric. "
+       statusCheck = False
+     else:   
+       parser.set('settings', 'discoveryport'        , result.get('DEdiscoveryport'))
+       
+     if result.get('configport0').isnumeric()  == False:
+       pageStatus = pageStatus + " Config port 0 not numeric. "
+       statusCheck = False
+     else: 
+       parser.set('settings', 'configport0'          , result.get('configport0'))
+       
+     if result.get('configport1').isnumeric()  == False:
+       pageStatus = pageStatus + " Config port 1 not numeric. "
+       statusCheck = False
+     else: 
+       parser.set('settings', 'configport1'          , result.get('configport1'))
+       
+     if result.get('configport2').isnumeric()  == False:
+       pageStatus = pageStatus + " Config port 2 not numeric. "
+       statusCheck = False
+     else: 
+       parser.set('settings', 'configport2'          , result.get('configport2'))
+       
+     if result.get('dataport0').isnumeric()  == False:
+       pageStatus = pageStatus + " Data port 0 not numeric. "
+       statusCheck = False
+     else: 
+       parser.set('settings', 'dataport0'            , result.get('dataport0'))
+       
+     if result.get('dataport1').isnumeric()  == False:
+       pageStatus = pageStatus + " Data port 1 not numeric. "
+       statusCheck = False
+     else: 
+       parser.set('settings', 'dataport1'            , result.get('dataport1'))
+       
+     if result.get('dataport2').isnumeric()  == False:
+       pageStatus = pageStatus + " Data port 2 not numeric. "
+       statusCheck = False
+     else: 
+       parser.set('settings', 'dataport2'            , result.get('dataport2'))
      
-     parser.set('settings', 'dataport0'          , result.get('dataport0'))
-     parser.set('settings', 'dataport1'          , result.get('dataport1'))
-     parser.set('settings', 'dataport2'          , result.get('dataport2'))
-     
-     parser.set('settings', 'antenna0',     result.get('antenna1'))
-     parser.set('settings', 'antenna1',     result.get('antenna2'))
-     
-     fp = open('config.ini','w')
-     parser.write(fp)
-     fp.close()
+     if statusCheck == True:
+       fp = open('config.ini','w')
+       parser.write(fp)
+       fp.close()
+       pageStatus = "SAVED."
+     else:
+       pageStatus = "ERROR. " + pageStatus + " NOT SAVED."
 
+   if request.method == 'GET':
+     pageStatus = "Changes do not take effect until you click Save."
+     
    parser.read('config.ini')
    subdircadence =    parser['settings']['subdir_cadence']
    drfcompression =   parser['settings']['drf_compression']
@@ -755,7 +833,7 @@ def danger():
      DEdiscoveryport = DEdiscoveryport , configport0 = configport0,
      configport1 = configport1 , configport2 = configport2 ,
      dataport0 = dataport0 , dataport1 = dataport1,  
-     dataport2 = dataport2 
+     dataport2 = dataport2, status = pageStatus 
      )
 
    
@@ -1072,8 +1150,7 @@ def callsign():
            except:
              pageStatus = pageStatus + "Grid # " + str(count) + " not a valid grid square. "
              statusCheck = False
-       
-      
+            
      if(statusCheck == True):
        pageStatus = "Saved."
        parser.set('monitor', 'c0', result.get('c0'))
@@ -1124,13 +1201,18 @@ def notification():
      smtptimeout = parser['email']['smtptimeout']
      smtpuid =     parser['email']['smtpuid']
      smtppw =      parser['email']['smtppw']
+     if parser['email']['notification'] == "On":
+       form.notify.data = True
+       print("Notify = on")
+     else:
+       form.notify.data = False
+       print("Notify = off")
      return render_template('notification.html',
 	  smtpsvr = smtpsvr, emailfrom = emailfrom,
-      emailto = emailto, smtpport = smtpport,
+      emailto = emailto, smtpport = smtpport, 
       smtptimeout = smtptimeout, smtpuid = smtpuid,
       smtppw = smtppw, status = theStatus, form = form)
 
-   form = ServerControlForm()
    if not form.validate():
      result = request.form
      emailto = result.get('emailto')
@@ -1143,7 +1225,7 @@ def notification():
      print("email to="+emailto)
      print("smtpsvr="+smtpsvr)
      theStatus = form.errors
-
+     print("Notification form invalid")
      result = request.form   
 
      return render_template('notification.html',
@@ -1169,6 +1251,7 @@ def notification():
           smtptimeout = parser['email']['smtptimeout']
           smtpuid =     parser['email']['smtpuid']
           smtppw =      parser['email']['smtppw']
+
           body = "Test message from your TangerineSDR"
           msg.attach(MIMEText(body,'plain'))
           server = smtplib.SMTP(smtpsvr,smtpport,'None',int(smtptimeout))
@@ -1192,6 +1275,10 @@ def notification():
         parser.set('email', 'smtptimeout', result.get('smtptimeout'))
         parser.set('email', 'smtpuid', result.get('smtpuid'))
         parser.set('email', 'smtppw', result.get('smtppw'))
+        if form.notify.data == True:
+          parser.set('email', 'notification', "On")
+        else:
+          parser.set('email', 'notification', "Off")
         fp = open('config.ini','w')
         parser.write(fp)
 
@@ -1202,9 +1289,13 @@ def notification():
      smtptimeout = parser['email']['smtptimeout']
      smtpuid =     parser['email']['smtpuid']
      smtppw =      parser['email']['smtppw']
+     if parser['email']['notification'] == "On":
+       form.notify.data = True
+     else: 
+       form.notify.data = False
      return render_template('notification.html',
 	  smtpsvr = smtpsvr, emailfrom = emailfrom,
-      emailto = emailto, smtpport = smtpport,
+      emailto = emailto, smtpport = smtpport, form = form,
       smtptimeout = smtptimeout, smtpuid = smtpuid,
       smtppw = smtppw, status = theStatus)
 
@@ -1246,7 +1337,6 @@ def propagation():
        print("detected psk=Off")
        
      return render_template('ft8setup.html',
-  #    pskindicator = psk,
       form  = form
       )
 
@@ -1407,7 +1497,6 @@ def propagation2():
       form = form
       )
 
-
 # The following is called by a java script in tangerine.html for showing the
 # most recent number of FT8 spots by band
 
@@ -1462,6 +1551,17 @@ def ft8list():
     z=1
 
   return Response(ft8string, mimetype='application/json')
+
+@app.route('/restore', methods = ['POST','GET'])
+def restore():
+  global pageStatus
+
+  print("XXXXXXXXXXXXXX    RESTORING CONFIG FROM MANUFACTURER'S SETTINGS XXXXXXXXXXXXXXXXX")
+  flash("*** ORIGINAL CONFIGURATION RESTORED. **********")
+  flash("Your configuration is saved as config.old .")
+  os.system("cp config.ini config.old")
+  os.system("cp config_original.ini config.ini")
+  return redirect('/danger')
 
 ######################################################################
 @app.errorhandler(404)

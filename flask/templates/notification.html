@@ -64,7 +64,7 @@ fieldset {
         <a href="/propagation">FT8 Setup</a><br>
         <a href="/propagation2">WSPR Setup</a><br>
         <a href="/danger">Danger Zone </a><br>
-         <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+         <a href="/TangerineSDR_documents/">Central Control Sys.</a> 
 	  </fieldset> </div>
 	
 	   <td class="bgtangerine" align = "left" width="10%" valign="top" >
@@ -83,6 +83,8 @@ fieldset {
 		<p>SMTP timeout <input type = "text" name = "smtptimeout" value = {{ smtptimeout }} ></p>
 		<p>SMTP User ID<input type = "text" name = "smtpuid" value = {{ smtpuid }} ></p>
 		<p>SMTP Password <input type = "password" name = "smtppw" value = {{ smtppw }} ></p>
+		<label class "notify checkbox">
+        {{ form.notify }}Enable email notifications<br>
             </div> 
 
          </fieldset>

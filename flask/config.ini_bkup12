@@ -133,11 +133,11 @@ r7 = 768000
 r8 = 1536000
 
 [monitor]
-c0 = VE3KRP
+c0 = K5NEC
 c1 = K7PIL
 c2 = W6AER
 c3 = VA2QR
-c4 = W5GZ
+c4 = 
 c5 = 
 g0 = EM63fj
 g1 = EM64
@@ -147,7 +147,6 @@ g4 = None
 g5 = None
 
 [email]
-notification = Off
 smtpsvr = smtp2go.com
 emailfrom = engelke77@bellsouth.net
 emailto = ab4ej1@gmail.com
