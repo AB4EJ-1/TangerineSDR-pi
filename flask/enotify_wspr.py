@@ -17,10 +17,11 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
 # About this program:
-# Purpose: this program reads in a decoded FT8 text file, parses it, finds all the heard calls
-# and grids; then compares these to a list of monitored calls from the config.ini file.
+# Purpose: this program reads in a decoded WSPR text file, parses it, finds all the heard calls
+# and grids; then compares these to a list of monitored calls from the config,ini file.
 # If it detects a monitored call/grid in the list of heard calls/grids, it will attempt to
-# send an email to the configured emnail address using the configured email server.
+# send an email to the configured emnail address using the configuree email server.
+
 
 import sys
 import configparser
@@ -42,7 +43,7 @@ print("pw='"+ smtp2gopw + "'")
 
 parser = configparser.ConfigParser(allow_no_value=True)
 parser.read('config.ini')
-path = parser['settings']['ramdisk_path'] + "/FT8/"
+path = parser['settings']['ramdisk_path'] + "/WSPR/"
 print("path=",path)
 
 calltarget = []
@@ -91,7 +92,7 @@ for heard in calllist:
   for target in calltarget:
     if(heard == target):
       print("target call detected:", target)
-      detected_list.append("CALL ALERT - " + heard + " on " + str(freqlist[h]) + " (FT8) at " + timelist[h])
+      detected_list.append("CALL ALERT - " + heard + " on " + str(freqlist[h]) + " (WSPR) at " + timelist[h])
 
 print("grids heard",gridlist)
 print("freqlist ", freqlist)
@@ -103,7 +104,7 @@ for heard in gridlist:
     print("h=",h, target)
     if(heard == target):
       print("target grid detected:", target, h)
-      detected_list.append("GRID ALERT - " + heard + " on " + str(freqlist[h]) + " (FT8) at " + timelist[h])
+      detected_list.append("GRID ALERT - " + heard + " on " + str(freqlist[h]) + " (WSPR) at " + timelist[h])
       
     
 #print("detected list:")

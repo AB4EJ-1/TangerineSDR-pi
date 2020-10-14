@@ -308,6 +308,8 @@ int main() {
                printf("notification CONFIG RESULT = '%s'\n",configresult);
              if (strncmp(configresult, "On",2))
                notification = 1;
+             else
+               notification = 0;
               } 
               printf("notification = %i\n",notification);
                      
