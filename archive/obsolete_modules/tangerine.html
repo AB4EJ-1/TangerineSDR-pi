@@ -1,0 +1,159 @@
+<html>
+<head>
+<script type=text/javascript src="{{
+  url_for('static', filename='jquery.js') }}"></script>
+<script type=text/javascript>
+$.getJSON( "/_ft8list", function( data ) {
+  var items = [];
+  $.each( data, function( key, val ) { 
+    for(key1 in key) {
+    items.push( "<li id='" + key + "'>" + val + "</li>" );
+    }
+  });
+  $( "<ul/>", {
+    "class": "my-new-list",
+    html: items.join( "" )
+  }).appendTo( "#result" );
+});
+</script>
+<script type=text/javascript>
+function updateList() { $.getJSON( "/_ft8list", function( data ) {
+  var items = [];
+  $("#result").text(" ");
+  $.each( data, function( key, val ) { 
+    for(key1 in key) {
+    items.push( "<li id='" + key + "'>" + val + "</li>" );
+    }
+  });
+  $( "<ul/>", {
+    "class": "my-new-list",
+    html: items.join( "" )
+  }).appendTo( "#result" );
+});
+}
+setInterval("updateList()",15000)
+</script>
+</head>
+
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
+<title></title>
+<style type="text/css">
+
+fieldset {
+  margin-bottom: 1em;
+  border: 1px solid #888;
+  border-right: 1px solid #666;
+  border-bottom: 1px solid #666;
+  background-color: #eeeeee;
+}
+</style>
+<body>
+
+<table width="100%">
+   <tbody><tr>
+    <td width="5%">
+     <center>
+      <a href="https://tangerinesdr.com"><img src="/static/tangerine_pix_sm.jpg" alt="TangerineSDR" >
+     </center>
+   </td>
+	<td width="78%">
+   	    <div class="bgtangerine">
+	     <hr class="tanger">
+		    <b style="font-size: 60px">TangerineSDR</b><br> 
+		    <div style="font-size: 30px">a TAPR Modular Scientific Software Defined Radio Project (version 1.0)</div>
+            <div style="font-size: 24px"><strong>Main Control Panel</strong></div>
+	     <hr class="tanger">
+	    </div>
+	</td>
+    <td>
+	  <center>
+		  <a href="https://www.tapr.org/"><img src="/static/tapr-logo.png" alt="TAPR"></a>
+	  </center> 
+	</td>
+     </tr>
+      </table>
+    <div style="width: 100%, display: table; ">
+     <div style="display: table-row">
+      <div style="width: 175px; display: table-cell; font-size:15px; line-height:1.8em;">
+      <a href="/">Main Control Panel</a><br>
+       <fieldset style="width:175px; margin-left:5px;" align="left">
+       <legend>Configure</legend>
+        <a href="/config">User Profile</a> <br>
+        <a href="/desetup">Data Collection</a> <br>
+        <a href="/uploading">Uploading</a><br>
+		<a href="/callsign">Callsign/Grid Monitor</a><br>
+		<a href="/index.html">Magnetometer</a> <br>
+        <a href="/notification">Notification</a><br>
+        <a href="/propagation">FT8 Setup</a><br>
+        <a href="/propagation2">WSPR Setup</a><br>
+        <a href="/danger">Danger Zone</a><br>
+        <a href="/TangerineSDR_documents/">Central Control Sys.</a> <br>
+	  </fieldset> </div>
+	  
+	  <div style="display: table-cell;">
+
+	  <table style="margin-left:5px" border = "1" width=75% > 
+	  <tr>
+	   <th class="bgtangerine" width="10%" valign="top" align="left">
+           <b style="font-size: 14px">Status of: </th>
+	   <th>Status</th>
+      </tr>
+	  <tr>
+	   <td>DE</td>
+	   <td>{{ form.destatus }}</td>
+	 <tr>
+		<td>Data Collection</td>
+	   <td>{{ form.dataStat }}</td>  
+	  </table><br>
+
+
+     <form style="width:600px;margin-left:5px" width = 90% action = "/" method = post>
+       <table>
+        <td><div style = font-size:12px;> Changes take effect only after you click Save.
+        <div style = font-size:15px;> 
+         <fieldset style="width:300px;" align="left" >
+            <legend>Data Collection</legend>
+            {{ form.hidden_tag() }}    
+            <div style = font-size:15px; font-weight:bold; margin-left:100px;>
+               {{ form.modeR }}Ringbuffer<br>
+               {{ form.modeS }}Snapshotter<br>
+               {{ form.modeF }}Continuous Upload(Firehose-R)<br>
+              <input type = "submit" name = "csubmit" value = "Save" />
+               {{ form.startDC }}
+               {{ form.stopDC  }}	 <br><br>
+               {{ form.restartDE }}&nbsp; Use this (only) to recover if DE does not start automatically or halts
+            </div>
+            <font color ="red">{{ form.errline }}</font>
+         </fieldset>
+         </td>
+         <td>
+         <fieldset style="width:40%" align = "left">
+          <legend>Propagation Monitor</legend>
+             <div style = font-size:14px; font-weight:bold; margin-left:150px;>
+               {{ form.propFT }}FT8<br>
+               {{ form.propWS }}WSPR
+               <br>
+               {{ form.startprop }}
+               {{ form.stopprop  }}
+            </div>
+           </fieldset>
+           </td>
+         <td>
+         <fieldset style="width:350px;margin-right:100px;" align = "left">
+          <legend>FT8 spots by band</legend>
+             <div style = "font-size:15px;margin-left:2px;
+               height:150px;width:300px;overflow:auto;" ><font size="2" face=" Courier New">
+                  <span id=result></span>  
+               <br><br>
+              <font>
+            </div>
+           </fieldset>
+           </td>   
+      </form>
+       </td>
+   </table>
+   </div>
+   </div>
+  </tbody>
+</body>
+</html>

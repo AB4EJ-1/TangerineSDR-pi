@@ -56,7 +56,7 @@ int inputcount[8];
 int upload = 0;      // set to 1 if user wants to upload spots to PSKReporter
 
 float chfrequency[8];
-
+int notification;
 
 static char pathToRAMdisk[100];
 
@@ -367,6 +367,28 @@ int main() {
            int ret = system(mycmd);
            printf("WSRC: decoding for stream %i started\n",streamID);
            
+             num_items = rconfig("notification",configresult,0);
+             if(num_items == 0)
+               {
+               printf("ERROR - notification setting not found in config.ini\n");
+               }
+             else
+               {
+               printf("notification CONFIG RESULT = '%s'\n",configresult);
+             if (strncmp(configresult, "On",2))
+               notification = 1;
+             else
+               notification = 0;
+              } 
+              printf("notification = %i\n",notification);
+                     
+             if (notification)
+               {
+               sprintf(mycmd,"python3 enotify_wspr.py %i",streamID);
+               printf("Run notification pkg: %s",mycmd);
+               ret = system(mycmd);
+               }
+                            
 
 
            for(int i = 0; i < 8; i++)

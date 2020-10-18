@@ -10,6 +10,8 @@ class MainControlForm(FlaskForm):
   mode = SelectField('Mode', choices = [('snapshotter','Snapshotter'),
      ('ringbuffer','Ringbuffer'), ('snapring','SnapRing'), ('firehoseR','FirehoseRemote'),
      ('firehoseL','FirehoseLocal')])
+  loglevel = SelectField('Logging Level:', choices= [('0','None'),('1','Errors'),
+     ('2','Warnings'),('3','Notices'),('4','Info'),('5','Debug')])
   modeR =     BooleanField('Ringbuffer',default=False)
   modeS =     BooleanField('Snapshotter',default=False)
   modeF =     BooleanField('Firehose(upload)',default=False)
@@ -122,7 +124,7 @@ class ThrottleControlForm(FlaskForm):
 
 class CallsignForm(FlaskForm):
   submit = SubmitField('Save callsigns')
-
+  
 class ServerControlForm(FlaskForm):
   notify =    BooleanField('notify',default=False)
   emailto = StringField('email from',[

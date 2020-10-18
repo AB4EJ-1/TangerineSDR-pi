@@ -34,7 +34,6 @@ import configparser
 
 import sys, platform
 import ctypes, ctypes.util
-
 from ctypes import *
 
 import h5py
@@ -110,8 +109,16 @@ START_WSPR_COLL    = "SW"
 STOP_WSPR_COLL     = "XW"
 LED_SET            = "SB"  
 UNLINK             = "UL"
-HALT_DE            = "XX"
+HALT_DE            = "XX" 
 
+log_NONE           = 0
+log_ERRORS         = 1
+log_WARNINGS       = 2
+log_NOTICE         = 3
+log_INFO           = 4
+log_DEBUG          = 5
+
+log_severity = (' ', 'err','warning','notice','info','debug')
 
 def is_numeric(s):
   try:
@@ -155,6 +162,17 @@ def create_channel(channelNo, configPort, dataPort):
   LH_portA_socket.close();
   return 
   
+# logging: user selects a logging level 0=None, 1=Errors, 2=Warnings, 3=Notices,
+#  4=Info,5=Debug; System logs all log items at or below user's selected log level.
+#  Level 5 (Debuf) means all events, messsages, files, etc., are logged. 
+#  Logs are in system log area:  /var/log/syslog , and are rotated per linux config settings. 
+def log(message, priority):
+  parser = configparser.ConfigParser(allow_no_value=True)
+  parser.read('config.ini')
+  loglevel = int(parser['settings']['loglevel'])
+  if( int(priority) <= loglevel):
+    os.system("logger -s -p user." + log_severity[priority] + " app.py: " + message)
+  return
 
 def discover_DE(): # Here we call the UDPdiscover C routine to find fist Tangerine on network
   global DE_IP_addr, DE_IP_portB, LH_IP_portA
@@ -171,6 +189,7 @@ def discover_DE(): # Here we call the UDPdiscover C routine to find fist Tangeri
   UDPdiscover.restype = None
 
   print("Run UDPdiscovery")
+  log("Run UDP Discovery",log_NOTICE)
   libc.UDPdiscover(m,a,b);
   DE_IP_addr = m.value.decode("utf-8")
   DE_IP_portB = b.value
@@ -182,6 +201,7 @@ def discover_DE(): # Here we call the UDPdiscover C routine to find fist Tangeri
 
 def send_configuration():
   print("set up configuration")
+  log("Set up configuration",log_NOTICE)
   parser = configparser.ConfigParser(allow_no_value=True)
   parser.read('config.ini')
   noChannels = parser['channels']['numchannels']
@@ -248,9 +268,11 @@ def heartbeat_thread(threadname,a):
   session = requests.Session()
   while(1):
     print("  V V V V V     HB thread    V V V V V")
+    log("Send heartbeat to Central Control",log_INFO)
     print("send: '" + URL + "'")
     r = session.get(url = URL, params = PARAMS)
     print("HB response:", r.text)
+    log("Heartbeat response: " + r.text,log_NOTICE)
     response = r.text.split()
     # in a Data Request, we expect:   DR  (Data Request#) (Start datteime) (End datetime)
     if(response[0] == "DR"):
@@ -566,7 +588,7 @@ def sdr():
 def restart():
   global theStatus, theDataStatus, statusmain, dataCollStatus
   global DE_IP_addr, DE_IP_portB, DE_portB_socket, DE_IP_portC, LH_IP_portF # portC and portF are lists (one set per channel)
-
+  log(" - - - Restarting - - -", log_NOTICE)
   DE_IP_portC = [] 
   LH_IP_portF = []
   parser = configparser.ConfigParser(allow_no_value=True)
@@ -728,7 +750,6 @@ def config():
      status = pageStatus, theElevation = theElevation )
 
 
-
 @app.route("/danger", methods = ['POST','GET'])
 def danger():
    global theStatus, theDataStatus
@@ -739,8 +760,10 @@ def danger():
    if request.method == 'POST':
      result = request.form
      statusCheck = True
+     print("log level set: ",form.loglevel.data)
      print("subdircadence = " + result.get('subdircadence'))
      t = result.get('subdircadence')
+     parser.set('settings','loglevel', form.loglevel.data)
      print("t = " , t, type(t), t.isnumeric())
      if t.isnumeric()  == False:
        pageStatus = pageStatus + "Subdirectory cadence not numeric. "
@@ -826,6 +849,7 @@ def danger():
    dataport0 =        parser['settings']['dataport0']
    dataport1 =        parser['settings']['dataport1']
    dataport2 =        parser['settings']['dataport2']
+   form.loglevel.data = parser['settings']['loglevel']
 
    return render_template('danger.html', form = form ,
      subdircadence = subdircadence,
@@ -1072,6 +1096,7 @@ def uploading():
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
    if request.method == 'GET' or result.get('csubmit') == "Discard Changes" :
+   
      form.throttle.data = parser['settings']['throttle']
      centralURL =     parser['settings']['central_host']
      centralPort =    parser['settings']['central_port']
