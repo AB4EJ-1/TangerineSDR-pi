@@ -120,41 +120,56 @@ log_DEBUG          = 5
 
 log_severity = (' ', 'err','warning','notice','info','debug')
 
+# logging: user selects a logging level 0=None, 1=Errors, 2=Warnings, 3=Notices,
+#  4=Info,5=Debug; System logs all log items at or below user's selected log level.
+#  Level 5 (Debuf) means all events, messsages, files, etc., are logged. 
+#  Logs are in system log area:  /var/log/syslog , and are rotated per linux config settings. 
+def log(message, priority):
+
+  parser = configparser.ConfigParser(allow_no_value=True)
+  parser.read('config.ini')
+  loglevel = int(parser['settings']['loglevel'])
+
+  if( int(priority) <= loglevel):
+    os.system("logger -s -p user." + log_severity[priority] + " app.py: " + message)
+  return
+
 def is_numeric(s):
   try:
-   float(s)
-   return True
+    float(s)
+    return True
   except ValueError:
-   print("Value error")
-   return False
+    log("Numeric value error in is_numeric",log_ERRORS)
+    print("Value error")
+    return False
 
 def send_to_DE(channelNo, msg):
   global DE_IP_addr, DE_IP_portB, DE_portB_socket, LH_IP_portA, DE_IP_portC, LH_IP_portF 
+  log("send_to_DE, channelNo " + str(channelNo) + " msg=" + msg, log_DEBUG)
+  print("DE_IP_portC list = ",DE_IP_portC)
   print("Send to DE ",DE_IP_addr, DE_IP_portC[channelNo], msg)
+  log("send_to_DE: "+ DE_IP_addr + ":" +  DE_IP_portC[channelNo] + " - " + msg, log_INFO)
   msg1 = msg.encode('utf-8')
   DE_portC_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   s = DE_portC_socket.sendto(msg1, (DE_IP_addr, int(DE_IP_portC[channelNo])))
   print("s=",s)
+  log("send_to_DE sendto return code: " + str(s), log_DEBUG)
   DE_portC_socket.close()
   return
 
-
 def create_channel(channelNo, configPort, dataPort):
   global DE_IP_addr, DE_IP_portB, DE_portB_socket, LH_IP_portA, DE_IP_portC, LH_IP_portF  
-
+  log("Entering create_channel",log_DEBUG)
   msg = bytes(CREATE_CHANNEL + " " + str(channelNo) + " " + str(configPort) + " " + str(dataPort),'utf-8')
-
+  log("create_channel msg=" + msg.decode('utf-8'), log_DEBUG)
   LH_portA_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
-
   print("Channel ", channelNo, " Send CREATE_CHANNEL to DE: ",msg, " args = ",DE_IP_addr, DE_IP_portB)
   DE_portB_socket.sendto(msg,(DE_IP_addr, DE_IP_portB))
-  print("bind to port ",LH_IP_portA)
   LH_portA_socket.bind(('', LH_IP_portA))
-
   print("Awaiting reply on port", LH_IP_portA )
+  log("Awaiting reply on port " + str(LH_IP_portA), log_DEBUG )
   reply = LH_portA_socket.recvfrom(20)
   r = reply[0]
-
   r = r.decode('utf-8')
   rlist = r.split(" ")
   DE_IP_portC.append(rlist[2]) # element 2 of split string is the PortC sent in the AK by the DE
@@ -162,32 +177,18 @@ def create_channel(channelNo, configPort, dataPort):
   LH_portA_socket.close();
   return 
   
-# logging: user selects a logging level 0=None, 1=Errors, 2=Warnings, 3=Notices,
-#  4=Info,5=Debug; System logs all log items at or below user's selected log level.
-#  Level 5 (Debuf) means all events, messsages, files, etc., are logged. 
-#  Logs are in system log area:  /var/log/syslog , and are rotated per linux config settings. 
-def log(message, priority):
-  parser = configparser.ConfigParser(allow_no_value=True)
-  parser.read('config.ini')
-  loglevel = int(parser['settings']['loglevel'])
-  if( int(priority) <= loglevel):
-    os.system("logger -s -p user." + log_severity[priority] + " app.py: " + message)
-  return
-
 def discover_DE(): # Here we call the UDPdiscover C routine to find fist Tangerine on network
   global DE_IP_addr, DE_IP_portB, LH_IP_portA
 
 # Access the shared library (i.e., *.so)
   libc = CDLL("./discoverylib.so")
   print("libc=",libc)
-
   a = c_ulong(0)
   b = c_ulong(0);
   m = ctypes.create_string_buffer(16)
   UDPdiscover = libc.UDPdiscover
   UDPdiscover.argtypes = [ctypes.POINTER(type(m)), ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_ulong)]
   UDPdiscover.restype = None
-
   print("Run UDPdiscovery")
   log("Run UDP Discovery",log_NOTICE)
   libc.UDPdiscover(m,a,b);
@@ -205,7 +206,6 @@ def send_configuration():
   parser = configparser.ConfigParser(allow_no_value=True)
   parser.read('config.ini')
   noChannels = parser['channels']['numchannels']
-
 # set up data acquisition. This is always Channel 0, with multiple subchannels.
   msg = "CH 0 VT "+ noChannels + " " + parser['channels']['datarate'] + " " # specify VITA-T (interleaved IQ smaples)
   subchannel_list = ""
@@ -217,8 +217,8 @@ def send_configuration():
     count = count + 1
   msg = msg + subchannel_list
   print("config 0 =", msg)
+  log("send_configuration, config 0 RG: " + msg, log_DEBUG)
   send_to_DE(0, msg)
-
 # set up FT8
   msg = "CH 1 V4 "
   subchannel_list = ""
@@ -229,9 +229,9 @@ def send_configuration():
     subchannel_list = subchannel_list + str(chNo) + " " + parser['settings']['ftant' + str(chNo)] + " " + parser['settings']['ft8'  + str(chNo) + "f"] + " "
     count = count + 1 # how many subchannels are active
   msg = msg + str(count) + " 4000 " + subchannel_list
-  print("config 1 (FT8)=",msg)
+  print("config 1 FT8 ",msg)
+  log("send_configuration, config 1 FT8: " + msg, log_DEBUG)
   send_to_DE(1,msg)
-
 # set up WSPR
   msg = "CH 2 V4 "
   subchannel_list = ""
@@ -243,6 +243,7 @@ def send_configuration():
     count = count + 1 # how many subchannels are active
   msg = msg + str(count) + " 375 " + subchannel_list
   print("config 2 (WSPR)=",msg)
+  log("send_configuration, config 2 WSPR: " + msg, log_DEBUG)
   send_to_DE(2,msg)
   return
   
@@ -276,7 +277,6 @@ def heartbeat_thread(threadname,a):
     response = r.text.split()
     # in a Data Request, we expect:   DR  (Data Request#) (Start datteime) (End datetime)
     if(response[0] == "DR"):
-
       print("Data request#",response[1]," received from Central, START=",response[2]," END=",response[3])
       print("DR pending = '" + DR_pending + "'")
       if(int(DR_pending) == int(response[1])):  # we have already started (or completed) processing this one
@@ -285,6 +285,7 @@ def heartbeat_thread(threadname,a):
         continue;
       else:  # keep track of most recently handled Data Request no.
         DRstatus = "Data request# " + response[1] + " received from Central, START=" + response[2] + " END=" + response[3]
+        log(DRstatus, log_INFO)
         requestNo = response[1]
         command = 'logger "' + DRstatus + '"'
         os.system(command) 
@@ -295,38 +296,35 @@ def heartbeat_thread(threadname,a):
       command = "drf ls " + ringbuffer_path + " -r -s " + response[2] + " -e " + response[3] + \
         " > " + RAMdisk_path + "/dataFileList"
       print("Ringbuffer content check command = ",command)
-  #    returned_text = subprocess.check_output(command, shell = True, universal_newlines = True)
+      log("drf command: " + command, log_INFO)
       os.system(command)
-  #    print("Result of command: ",returned_text)
       a = datetime.now()
-
       fn = "%i-%i-%i_%i:%i:%iZ" %(a.year, a.month,a.day,a.hour, a.minute ,+ a.second)
-      
       command = "./filecompress.sh " + ringbuffer_path + " " + RAMdisk_path + "/dataFileList " + \
         upload_path + "/" + fn + "_" + theNode + "_DRF.tar"
+      log("filecompress : " + command, log_INFO)
       print("compress command: ", command)
       os.system(command)
-      
       command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + theNode + "/sftp-test;exit' -u " + theNode + ",odroid " + "sftp://" + central_host
       print("Upload command = '" + command + "'")
+      log("Upload command: " + command, log_INFO)
       print("Starting upload...")
-      os.system(command)
-        
+      os.system(command) 
     time.sleep(heartbeat_interval)
-  return 
-    
+  return    
 
 #####################################################################
 # Here is the home page (Tangerine.html)
 @app.route("/", methods = ['GET', 'POST'])
 def sdr():
-   form = MainControlForm()
-   global theStatus, theDataStatus, tcp_client, statusmain
-   global statusFT8, statusWSPR, statusRG, statusSnap, statusFHR
-   parser = configparser.ConfigParser(allow_no_value=True)
-   parser.read('config.ini')
-
-   if request.method == 'GET':  
+  form = MainControlForm()
+  global theStatus, theDataStatus, tcp_client, statusmain
+  global statusFT8, statusWSPR, statusRG, statusSnap, statusFHR
+  parser = configparser.ConfigParser(allow_no_value=True)
+  parser.read('config.ini')
+  log("Route / " + request.method, log_DEBUG)
+  loglevel = int(parser['settings']['loglevel'])
+  if request.method == 'GET':  
      if(parser['settings']['FT8_mode'] == "On"):
        form.propFT.data = True
      else:
@@ -353,8 +351,7 @@ def sdr():
      print("F: home page, status = ",theStatus)
      return render_template('tangerine.html',form = form)
 
-   if request.method == 'POST':
- #     print("F: Main control POST; mode set to ",form.mode.data)
+  if request.method == 'POST':
       print("F: Main control POST; modeR=",form.modeR.data)
       print("F: Main control POST; modeS=",form.modeS.data)
       print("F: Main control POST; modeF=",form.modeF.data)
@@ -362,10 +359,10 @@ def sdr():
       print("Entering main route")
       print("restart button -",form.restartDE.data)
       result = request.form
-      
 
       if(form.restartDE.data):
-      # TODO: here, add code to stop all activities & refleNonect that in config
+      # TODO: here, add code to stop all activities & reflect that in config
+        log("User clicked Restart",log_NOTICE)
         return redirect('/restart')
         
  # Check for errors and missing configurations
@@ -409,6 +406,10 @@ def sdr():
       fp = open('config.ini','w')
       parser.write(fp)
       fp.close()
+      log("/ config.ini updated", log_INFO)
+      loglevel = int(parser['settings']['loglevel'])
+      if(loglevel == log_DEBUG):
+        os.system("logger -f config.ini")
       print('F: start set to ',form.startDC.data)
       print('F: stop set to ', form.stopDC.data)
 
@@ -564,9 +565,6 @@ def sdr():
         thePropStatus = 0
 
       theDataStatus = ""
-   #   print("configured modes RG '"+parser['settings']['ringbuffer_mode']+"' Snap '"+parser['settings']['snapshotter_mode']+"'");
-   #   if(parser['settings']['ringbuffer_mode'] == "On"):
-  #    theDataStatus = theDataStatus + "Ringbuffer " + parser['settings']['ringbuffer_mode'] +";"
       if(statusFT8 == 1):
         theDataStatus = theDataStatus + "FT8 active; "
       if(statusWSPR == 1):
@@ -575,10 +573,8 @@ def sdr():
         theDataStatus = theDataStatus + "Ringbuffer active; "
       if(statusSnap == 1):
         theDataStatus = theDataStatus + "Snapshotter active; "
-        
       if(statusFHR == 1):
         theDataStatus = theDataStatus + "Firehose-R active"
-
       print("F: end of control loop; theStatus=", theStatus)
       form.destatus = theStatus
       form.dataStat = theDataStatus
@@ -687,6 +683,7 @@ def config():
    parser = configparser.ConfigParser(allow_no_value=True)
    pageStatus = "Changes do not take effect until you click Save."
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
    result = request.form
    if request.method == 'POST' and result.get('csubmit') != "Discard Changes" :
      statusCheck = True
@@ -723,6 +720,9 @@ def config():
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
+       log("/config config.ini updated", log_INFO)
+       if(loglevel == log_DEBUG):
+         os.system("logger -f config.ini")
        pageStatus = pageStatus + "Saved."
      else:
        pageStatus = pageStatus + "NOT SAVED."
@@ -1034,7 +1034,7 @@ def desetup():
      if(statusCheck == True):
        print("Save config; ringbuffer_path=" +   result.get('ringbufferPath'))
        parser.set('settings', 'ringbuffer_path', result.get('ringbufferPath'))
-       parser.set('settings', 'fftoutputpath',   result.get('fftoutput_path'))
+       parser.set('settings', 'fftoutput_path',   result.get('fftoutput_path'))
        parser.set('settings', 'firehoser_path' , result.get('firehosepath'))
        parser.set('settings', 'temp_path',       result.get('temppath'))
        fp = open('config.ini','w')
@@ -1178,12 +1178,12 @@ def callsign():
             
      if(statusCheck == True):
        pageStatus = "Saved."
-       parser.set('monitor', 'c0', result.get('c0'))
-       parser.set('monitor', 'c1', result.get('c1'))
-       parser.set('monitor', 'c2', result.get('c2'))
-       parser.set('monitor', 'c3', result.get('c3'))
-       parser.set('monitor', 'c4', result.get('c4'))
-       parser.set('monitor', 'c5', result.get('c5'))
+       parser.set('monitor', 'c0', result.get('c0').upper())
+       parser.set('monitor', 'c1', result.get('c1').upper())
+       parser.set('monitor', 'c2', result.get('c2').upper())
+       parser.set('monitor', 'c3', result.get('c3').upper())
+       parser.set('monitor', 'c4', result.get('c4').upper())
+       parser.set('monitor', 'c5', result.get('c5').upper())
        parser.set('monitor', 'g0', result.get('g0'))
        parser.set('monitor', 'g1', result.get('g1'))
        parser.set('monitor', 'g2', result.get('g2'))
