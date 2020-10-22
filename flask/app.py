@@ -623,7 +623,7 @@ def restart():
   # create any missing directories
   rcmd = "mkdir " + ringbufferPath
   os.system(rcmd)  
-  rcmd = "mkdir " + parser['settings']['fftoutput_path']
+  rcmd = "mkdir " + parser['settings']['fftoutputpath']
   os.system(rcmd)
   rcmd = "mkdir " + parser['settings']['upload_path']
   os.system(rcmd)
@@ -879,7 +879,7 @@ def desetup():
    parser.read('config.ini')
    ringbufferPath = parser['settings']['ringbuffer_path']
    maxringbufsize = parser['settings']['ringbuf_maxsize']
-   fftoutputpath  = parser['settings']['fftoutput_path']
+   fftoutputpath  = parser['settings']['fftoutputpath']
    firehosepath   = parser['settings']['firehoser_path']
    temppath       = parser['settings']['temp_path']
    dataCollStatus = int(parser['settings']['datacollstatus'])
@@ -1034,13 +1034,15 @@ def desetup():
      if(statusCheck == True):
        print("Save config; ringbuffer_path=" +   result.get('ringbufferPath'))
        parser.set('settings', 'ringbuffer_path', result.get('ringbufferPath'))
-       parser.set('settings', 'fftoutput_path',   result.get('fftoutput_path'))
+       parser.set('settings', 'fftoutputpath',   result.get('fftoutputpath'))
        parser.set('settings', 'firehoser_path' , result.get('firehosepath'))
        parser.set('settings', 'temp_path',       result.get('temppath'))
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
+
    
+
      channellistform = ChannelListForm()
      channelcount = parser['channels']['numChannels']
      form = ChannelControlForm()
@@ -1073,12 +1075,21 @@ def desetup():
       channelform.channel_freq = parser['channels']['f' + str(ch)]
   #    configCmd = configCmd + parser['channels']['f' + str(ch)] + ","
       channellistform.channels.append_entry(channelform)
- #    send_to_mainctl(configCmd,1);
+
      if(statusCheck == True):
         send_configuration()
         pageStatus = "Setup saved."
      else:
         pageStatus = pageStatus + " NOT SAVED"
+
+      # now populate for screen display the saved settings
+   parser = configparser.ConfigParser(allow_no_value=True)
+   parser.read('config.ini')
+   fftoutputpath  = parser['settings']['fftoutputpath']
+   ringbufferPath = parser['settings']['ringbuffer_path']
+   firehosepath   = parser['settings']['firehoser_path']
+   temppath       = parser['settings']['temp_path']
+
 
    print("return to desetup")
    return render_template('desetup.html',

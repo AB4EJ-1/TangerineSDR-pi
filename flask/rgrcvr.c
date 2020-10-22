@@ -354,8 +354,7 @@ int getDataDates(char *input, char* startpoint, char* endpoint)
  }
 
 ///////////////// create file name for upload data //////////////////
-const char * buildFileName(char * node, char * grid){
-
+ const char * buildFileName(char * node, char * grid){
  static char thefilename[100] = "";
  time_t t= time(NULL);
  struct tm *tm = localtime(&t);
@@ -581,7 +580,7 @@ int main() {
       snapshotterMode = 1;
 
 
-       num_items = rconfig("fftoutput_path",configresult,0);
+       num_items = rconfig("fftoutputpath",configresult,0);
        if(num_items > 0)
         {
          strcpy(FFToutputPath,configresult);
