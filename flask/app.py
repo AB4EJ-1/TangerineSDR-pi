@@ -500,7 +500,7 @@ def sdr():
       if(form.stopDC.data ):
             send_to_DE(0,STOP_DATA_COLL + " 0") 
             returned_value = os.system("killall -9 rgrcvr")
-            print("F: after kill of ft8rcvr, retcode=",returned_value)
+            print("F: after kill of rgrcvr, retcode=",returned_value)
             fhmode = parser['settings']['firehoser_mode']
             fhdirectory = parser['settings']['firehoser_path']
             fhtemp = parser['settings']['temp_path']
@@ -550,7 +550,7 @@ def sdr():
             statusWSPR = 1
         thePropStatus = 1
 
-      if(form.stopprop.data) :
+      if(form.stopprop.data) :  # TODO: this code is duplicated, need to cleanly remove
         if(form.propFT.data == True):
          #   send_to_mainctl(STOP_FT8_COLL,0)
             returned_value = os.system("killall -9 ft8rcvr")
@@ -1538,7 +1538,7 @@ def propagation2():
 
 @app.route('/_ft8list')
 def ft8list():
-# print("ft8list")
+  print("ft8list")
   ft8string = ""
   band = []
  # print("Entering _/ft8list")
@@ -1571,7 +1571,7 @@ def ft8list():
       
 # here we build a JSON string to populate the FT8 panel
     ft8string = '{'
-    ft8string = ft8string + '"0":"MHz  spots ' + dm + '",'
+    ft8string = ft8string + '"0":"FT8  spots ' + dm + '",'
  #   print('ft8str',ft8string)
     for i in range(len(band)):
      pval = str(plist[i])
@@ -1579,7 +1579,7 @@ def ft8list():
        str(band[i]) + ' - ' + pval + ' ",'
 
     ft8string = ft8string + '"end":" "}'
-   # print("ft8string= " , ft8string)
+    print("ft8string= " , ft8string)
   except Exception as ex:
    # print("F: exception trying to build JSON FT8 list")
   #  print(ex)
@@ -1587,6 +1587,64 @@ def ft8list():
     z=1
 
   return Response(ft8string, mimetype='application/json')
+  
+@app.route('/_wsprlist')
+def wsprlist():
+  print("wsprlist")
+  wsprstring = ""
+  band = []
+  chnl = []
+
+  parser = configparser.ConfigParser(allow_no_value=True)
+  parser.read('config.ini')
+  for i in range(7):
+    ia = "ws" + str(i) + "f"
+    ib = "wsant" + str(i)
+    if(parser['settings'][ib] != "Off"):
+      band.append(parser['settings'][ia])
+      chnl.append(i)
+      print("wspr band list=" , band)
+
+  print("chnl=",chnl)
+  try:
+    plist = []
+    for fno in range(len(band)):
+
+ #    fname = '/mnt/RAM_disk/FT8/decoded' + str(fno) +'.txt'
+     fname = parser['settings']['ramdisk_path'] + "/WSPR/decoded"  + str(chnl[fno]) +'z.txt'
+     print("checking file",fname)
+     dm = time.ctime(os.path.getmtime(fname))
+   #  dm = "d"
+     f = open(fname,"r")
+     print("file opened")
+
+    # print("ft8 readlines")
+     plist.append(len(f.readlines()))
+    # print("append done")
+     print("plist=",plist)
+     f.close()
+      
+# here we build a JSON string to populate the WSPR panel
+    wsprstring = '{'
+    wsprstring = wsprstring + '"0":"WSPR  spots ' + dm + '",'
+ #   print('ft8str',ft8string)
+    for i in range(len(band)):
+     pval = str(plist[i])
+     wsprstring = wsprstring + '"' + str(i+1) + '":"' +  \
+       str(band[i]) + ' - ' + pval + ' ",'
+
+    wsprstring = wsprstring + '"end":" "}'
+   # print("ft8string= " , ft8string)
+  except Exception as ex:
+   # print("F: exception trying to build JSON FT8 list")
+  #  print(ex)
+# no-op
+    z=1
+
+  return Response(wsprstring, mimetype='application/json')
+  
+  
+  
 
 @app.route('/restore', methods = ['POST','GET'])
 def restore():

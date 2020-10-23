@@ -15,6 +15,18 @@ $.getJSON( "/_ft8list", function( data ) {
     html: items.join( "" )
   }).appendTo( "#result" );
 });
+$.getJSON( "/_wsprlist", function( data ) {
+  var items = [];
+  $.each( data, function( key, val ) { 
+    for(key1 in key) {
+    items.push( "<li id='" + key + "'>" + val + "</li>" );
+    }
+  });
+  $( "<ul/>", {
+    "class": "my-new-list",
+    html: items.join( "" )
+  }).appendTo( "#result2" );
+});
 </script>
 <script type=text/javascript>
 function updateList() { $.getJSON( "/_ft8list", function( data ) {
@@ -29,8 +41,21 @@ function updateList() { $.getJSON( "/_ft8list", function( data ) {
     "class": "my-new-list",
     html: items.join( "" )
   }).appendTo( "#result" );
+  );
+  $.getJSON( "/_wsprlist", function( data ) {
+  var items = [];
+  $.each( data, function( key, val ) { 
+    for(key1 in key) {
+    items.push( "<li id='" + key + "'>" + val + "</li>" );
+    }
+  });
+  $( "<ul/>", {
+    "class": "my-new-list",
+    html: items.join( "" )
+  }).appendTo( "#result2" );
+  
 });
-}
+}}
 setInterval("updateList()",15000)
 </script>
 </head>
@@ -140,10 +165,11 @@ fieldset {
            </td>
          <td>
          <fieldset style="width:350px;margin-right:100px;" align = "left">
-          <legend>FT8 spots by band</legend>
+          <legend>FT8/WSPR spots by band</legend>
              <div style = "font-size:15px;margin-left:2px;
-               height:150px;width:300px;overflow:auto;" ><font size="2" face=" Courier New">
+               height:300px;width:300px;overflow:auto;" ><font size="2" face=" Courier New">
                   <span id=result></span>  
+                  <span id=result2></span>
                <br><br>
               <font>
             </div>
