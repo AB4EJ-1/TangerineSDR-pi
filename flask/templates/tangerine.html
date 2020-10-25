@@ -7,6 +7,7 @@ $.getJSON( "/_ft8list", function( data ) {
   var items = [];
   $.each( data, function( key, val ) { 
     for(key1 in key) {
+     if(key == "end") { break; }
     items.push( "<li id='" + key + "'>" + val + "</li>" );
     }
   });
@@ -19,7 +20,8 @@ $.getJSON( "/_wsprlist", function( data ) {
   var items = [];
   $.each( data, function( key, val ) { 
     for(key1 in key) {
-    items.push( "<li id='" + key + "'>" + val + "</li>" );
+     if(key == "end") { break; }
+    items.push( "<li id='" + key1 + "'>" + val + "</li>" );
     }
   });
   $( "<ul/>", {
@@ -34,18 +36,26 @@ function updateList() { $.getJSON( "/_ft8list", function( data ) {
   $("#result").text(" ");
   $.each( data, function( key, val ) { 
     for(key1 in key) {
-    items.push( "<li id='" + key + "'>" + val + "</li>" );
+      if(key == "end") { break; }
+     items.push( "<li id='" + key + "'>" + val + "</li>" );
     }
   });
   $( "<ul/>", {
     "class": "my-new-list",
     html: items.join( "" )
   }).appendTo( "#result" );
-  );
-  $.getJSON( "/_wsprlist", function( data ) {
+});
+}
+setInterval("updateList()",15000)
+</script>
+
+<script type=text/javascript>
+function updateList2() { $.getJSON( "/_wsprlist", function( data ) {
   var items = [];
+  $("#result2").text(" ");
   $.each( data, function( key, val ) { 
     for(key1 in key) {
+     if(key == "end") { break; }
     items.push( "<li id='" + key + "'>" + val + "</li>" );
     }
   });
@@ -53,11 +63,11 @@ function updateList() { $.getJSON( "/_ft8list", function( data ) {
     "class": "my-new-list",
     html: items.join( "" )
   }).appendTo( "#result2" );
-  
 });
-}}
-setInterval("updateList()",15000)
+}
+setInterval("updateList2()",15000)
 </script>
+
 </head>
 
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1" />
@@ -165,7 +175,7 @@ fieldset {
            </td>
          <td>
          <fieldset style="width:350px;margin-right:100px;" align = "left">
-          <legend>FT8/WSPR spots by band</legend>
+          <legend>Spots by band</legend>
              <div style = "font-size:15px;margin-left:2px;
                height:300px;width:300px;overflow:auto;" ><font size="2" face=" Courier New">
                   <span id=result></span>  

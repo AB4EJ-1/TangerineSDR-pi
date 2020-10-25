@@ -1571,7 +1571,7 @@ def ft8list():
       
 # here we build a JSON string to populate the FT8 panel
     ft8string = '{'
-    ft8string = ft8string + '"0":"FT8  spots ' + dm + '",'
+    ft8string = ft8string + '"0":"FT8: ' + dm + '",'
  #   print('ft8str',ft8string)
     for i in range(len(band)):
      pval = str(plist[i])
@@ -1626,7 +1626,7 @@ def wsprlist():
       
 # here we build a JSON string to populate the WSPR panel
     wsprstring = '{'
-    wsprstring = wsprstring + '"0":"WSPR  spots ' + dm + '",'
+    wsprstring = wsprstring + '"0":"WSPR: ' + dm + '",'
  #   print('ft8str',ft8string)
     for i in range(len(band)):
      pval = str(plist[i])
