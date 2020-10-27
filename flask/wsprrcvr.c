@@ -356,12 +356,21 @@ int main() {
 
 
         //   sprintf(mycmd,"nice -n10 ./wsprd -JC 5000 -f %f %s > %s/WSPR/decoded%i.txt",dialfreq[streamIDt],name[streamIDt],pathToRAMdisk,streamIDt);
-
-
+          char uplcontrol[5] = "";
+          num_items = rconfig("wspr_upload",configresult,0);
+          if(num_items == 0)
+           {
+            printf("ERROR - wspr_upload setting not found in config.ini\n");
+           }
+           else
+           {           
+           printf("wspr_upload CONFIG RESULT = '%s'\n",configresult);
+           strcpy(uplcontrol,configresult);
+           }
 
            char mycmd[200];
          //  int idialfreq = dialfreq[streamID];
-           sprintf(mycmd, "sh ./decode_and_send.sh %s %i %s %s %f %s  &",pathToRAMdisk,streamID,"AB4EJ","EM63fj",dialfreq[streamID],name[streamID]);
+           sprintf(mycmd, "sh ./decodeWSPR_and_send.sh %s %i %s %s %f %s %s &",pathToRAMdisk,streamID,"AB4EJ","EM63fj",dialfreq[streamID],name[streamID],uplcontrol);
       //     TODO: the above must use configured values
            printf("WSRC: issue command %s\n",mycmd);
            int ret = system(mycmd);
@@ -375,7 +384,7 @@ int main() {
              else
                {
                printf("notification CONFIG RESULT = '%s'\n",configresult);
-             if (strncmp(configresult, "On",2))
+             if (strncmp(configresult, "On",2) == 0)
                notification = 1;
              else
                notification = 0;

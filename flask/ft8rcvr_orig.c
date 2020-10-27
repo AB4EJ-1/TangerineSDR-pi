@@ -124,7 +124,6 @@ int main() {
     } 
   printf("antenna0 =%s\n",myantenna0);
 
-/*
   num_items = rconfig("psk_upload",configresult,0);
   if(num_items == 0)
     {
@@ -138,8 +137,6 @@ int main() {
     else
       upload = 0;
     } 
-    
-    */
   printf("antenna0 =%s\n",myantenna0);
 
     num_items = rconfig("dataport1",configresult,0);
@@ -278,96 +275,22 @@ int main() {
          // trigger processing of the ft8 data file
 
            printf("FT8 decoding...\n");
-           
-          int uplcontrol = 0;  // determine if user wants spots uploaded
-          num_items = rconfig("psk_upload",configresult,0);
-          if(num_items == 0)
-           {
-            printf("ERROR - psk_upload setting not found in config.ini\n");
-           }
-           else
-           {           
-           printf("psk_upload CONFIG RESULT = '%s'\n",configresult);
-           if(strcmp(configresult, "On") == 0)
-             {
-             uplcontrol = 1;
-             }
-           
-           }
-           
-          char usercall[20];
-          num_items = rconfig("callsign",configresult,0);
-          if(num_items == 0)
-           {
-            printf("ERROR - callsign setting not found in config.ini\n");
-            strcpy(uplcontrol,"Off");  // no callsign, disable uploading
-           }
-           else
-           {           
-           printf("callsign CONFIG RESULT = '%s'\n",configresult);
-           strcpy(usercall,configresult);
-           }
-           
-          char usernode[20] = ""; 
-          num_items = rconfig("node",configresult,0);
-          if(num_items == 0)
-           {
-            printf("ERROR - node setting not found in config.ini\n");
-           }
-           else
-           {           
-           printf("node CONFIG RESULT = '%s'\n",configresult);
-           strcpy(usernode,configresult);
-           }
-                 
-           
-         char selectedAntenna[6] = "";
-         char selectedAntennaConf[10] = "";
-         sprintf(selectedAntenna,"ftant%i",streamID);
-         char antennaDesc[64] = ""; // max size for PSKreporter
-         char selectedPort[2]="0";
-         num_items = rconfig(selectedAntenna,configresult,0);
-          if(num_items == 0)
-           {
-            printf("ERROR - %s setting not found in config.ini\n",selectedAntenna);
-           }
-           else
-           {           
-           printf("antenna port CONFIG RESULT = '%s'\n",configresult);
-           strcpy(selectedPort,configresult);
-           }
-         sprintf(selectedAntennaConf,"antenna%s",selectedPort);
-         num_items = rconfig(selectedAntennaConf,configresult,0);
-          if(num_items == 0)
-           {
-            printf("ERROR - %s setting not found in config.ini\n",selectedAntennaConf);
-           }
-           else
-           {           
-           printf("antenna descr CONFIG RESULT = '%s'\n",configresult);
-           strcpy(antennaDesc,configresult);
-           }
-           
-                   
+           char chstr[4];
+           sprintf(chstr,"%i",streamID);
            char mycmd[100];
-           
-           sprintf(mycmd, "sh ./decodeFT8_and_send.sh %s %i %s %s %f %s %i %s &",pathToRAMdisk,streamID,usercall,usernode,dialfreq[streamID],name[streamID],uplcontrol,antennaDesc);
-           printf("Issue command: %s\n",mycmd);
+ 
            int ret = system(mycmd);
            // Format of the upload file:   see https://pskreporter.info/pskdev.html
-
+           sprintf(mycmd,"nice -n11 ./ft8d_del %s > %s/FT8/decoded%i.txt",name[streamID],pathToRAMdisk,streamID);
+           printf("issue command: %s\n",mycmd);
            // Note: this assumes that decoder (ft8d_del) deletes work file when done.
-
-           
-           
-           
-           
-
-           if(0 == 1) // diabled for now
+           ret = system(mycmd);
+           printf("ft8 decode ran, rc = %i\n",ret);
+           if(upload == 1)
              {
              sprintf(mycmd,"nice -n9 awk '!seen[$7]++' %s/FT8/decoded%i.txt > %s/FT8/decoded%iz.txt",pathToRAMdisk,streamID,pathToRAMdisk,streamID);
              printf("Removing dupes: \n %s \n",mycmd);
-             ret = system(mycmd); 
+             ret = system(mycmd);
              printf("Upload to PSKReporter\n");
              sprintf(mycmd,"nice -n9 ./upload-to-pskreporter %s %s %s %s/FT8/decoded%dz.txt", 
                 mycallsign, mygrid, myantenna0, pathToRAMdisk, streamID);

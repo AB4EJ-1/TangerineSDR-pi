@@ -179,7 +179,6 @@ def create_channel(channelNo, configPort, dataPort):
   
 def discover_DE(): # Here we call the UDPdiscover C routine to find fist Tangerine on network
   global DE_IP_addr, DE_IP_portB, LH_IP_portA
-
 # Access the shared library (i.e., *.so)
   libc = CDLL("./discoverylib.so")
   print("libc=",libc)
@@ -207,7 +206,7 @@ def send_configuration():
   parser.read('config.ini')
   noChannels = parser['channels']['numchannels']
 # set up data acquisition. This is always Channel 0, with multiple subchannels.
-  msg = "CH 0 VT "+ noChannels + " " + parser['channels']['datarate'] + " " # specify VITA-T (interleaved IQ smaples)
+  msg = CONFIG_CHANNEL  + " 0 VT "+ noChannels + " " + parser['channels']['datarate'] + " " # specify VITA-T (interleaved IQ smaples)
   subchannel_list = ""
   count = 0
   while count < int(noChannels):  # this is actually the no. of data acquisition subchannels
@@ -220,7 +219,7 @@ def send_configuration():
   log("send_configuration, config 0 RG: " + msg, log_DEBUG)
   send_to_DE(0, msg)
 # set up FT8
-  msg = "CH 1 V4 "
+  msg = CONFIG_CHANNEL + " 1 V4 "
   subchannel_list = ""
   count = 0
   for chNo in range(0,7) :
@@ -233,7 +232,7 @@ def send_configuration():
   log("send_configuration, config 1 FT8: " + msg, log_DEBUG)
   send_to_DE(1,msg)
 # set up WSPR
-  msg = "CH 2 V4 "
+  msg = CONFIG_CHANNEL  + " 2 V4 "
   subchannel_list = ""
   count = 0
   for chNo in range(0,7) :
@@ -251,6 +250,7 @@ def send_configuration():
 # Also looks for a Data Request response from Central, indicating that some part of ringbuffer
 # is to be uploaded.  
 def heartbeat_thread(threadname,a):
+  log("Starting heartbeat thread", log_INFO)
   parser = configparser.ConfigParser(allow_no_value=True)
   parser.read('config.ini')
   central_host = parser['settings']['central_host']
@@ -266,6 +266,7 @@ def heartbeat_thread(threadname,a):
   print("DR # pending=",DR_pending)
   URL = "http://" + central_host + ":" + central_port + "/apikey/" + theToken
   PARAMS = "node=" + theNode 
+  log("Heartbeat URL: " + URL,log_DEBUG)
   session = requests.Session()
   while(1):
     print("  V V V V V     HB thread    V V V V V")
@@ -325,31 +326,31 @@ def sdr():
   log("Route / " + request.method, log_DEBUG)
   loglevel = int(parser['settings']['loglevel'])
   if request.method == 'GET':  
-     if(parser['settings']['FT8_mode'] == "On"):
+    if(parser['settings']['FT8_mode'] == "On"):
        form.propFT.data = True
-     else:
+    else:
        form.propFT.data  = False
-     if(parser['settings']['WSPR_mode'] == "On"):
+    if(parser['settings']['WSPR_mode'] == "On"):
        form.propWS.data = True
-     else:
+    else:
        form.propWS.data  = False
-     if(parser['settings']['ringbuffer_mode'] == "On"):
+    if(parser['settings']['ringbuffer_mode'] == "On"):
        form.modeR.data = True
-     else:
+    else:
        form.modeR.data  = False
-     if(parser['settings']['snapshotter_mode'] == "On"):
+    if(parser['settings']['snapshotter_mode'] == "On"):
        form.modeS.data = True
-     else:
+    else:
        form.modeS.data  = False
-     if(parser['settings']['firehoser_mode'] == "On"):
+    if(parser['settings']['firehoser_mode'] == "On"):
        form.modeF.data = True
-     else:
+    else:
        form.modeF.data  = False
 
-     form.destatus = theStatus
-     form.dataStat = theDataStatus
-     print("F: home page, status = ",theStatus)
-     return render_template('tangerine.html',form = form)
+    form.destatus = theStatus
+    form.dataStat = theDataStatus
+    print("F: home page, status = ",theStatus)
+    return render_template('tangerine.html',form = form)
 
   if request.method == 'POST':
       print("F: Main control POST; modeR=",form.modeR.data)
@@ -358,6 +359,7 @@ def sdr():
       form.errline = ""
       print("Entering main route")
       print("restart button -",form.restartDE.data)
+      log("Main control POST ", log_INFO) 
       result = request.form
 
       if(form.restartDE.data):
@@ -368,6 +370,7 @@ def sdr():
  # Check for errors and missing configurations
 
       if (form.modeR.data == True and form.modeF.data == True):
+        log("Error - user selected both ringbuffer and firehose", log_NOTICE)
         print("F: error - user selected both ringbuffer and firehose")
         form.errline = "Select EITHER Ringbuffer or Firehose mode"
         return render_template('tangerine.html', form = form)
@@ -422,13 +425,8 @@ def sdr():
 #        return  render_template('tangerine.html', form = form)
 
       if(form.startDC.data ): # User clicked button to start ringbuffer-type data collection
-
-      #      if(statusmain != 1):
-      #        print("F: user tried to start data collection before starting mainctl")
-      #        form.errline = "ERROR. You must Start/restart mainctl before starting data collection"
-      #        return render_template('tangerine.html', form = form)
-
-            if   ( len(parser['settings']['firehoser_path']) < 1 
+            log("User clicked button to start ringbuffer data coll.",log_NOTICE)
+            if(len(parser['settings']['firehoser_path']) < 1 
                    and form.mode.data == 'firehoseR') :
               print("F: configured temp firehose path='", parser['settings']['firehoser_path'],"'", len(parser['settings']['firehoser_path']))
               form.errline = 'ERROR: Path to temporary firehoseR storage not configured'
@@ -448,7 +446,8 @@ def sdr():
                 metadataPath = parser['settings']['firehoser_path']
               else:
                 metadataPath = parser['settings']['ringbuffer_path']
-           #   print("metadata path="+metadataPath)
+              log("Metadata path=",log_DEBUG)
+              log(metadataPath,log_DEBUG)
               print("F: SEND START DATA COLLECTION COMMAND, directory=" + metadataPath)
               returned_value = os.system("mkdir "+ metadataPath)
               print("F: after metadata creation, retcode=",returned_value)
@@ -483,10 +482,10 @@ def sdr():
               print("Record list of subchannels=",chf)
               
               try:
-                time.sleep(1)  #wait for properties file to be created
+                time.sleep(2)  #wait for properties file to be created
            #     metadataPath = parser['settings']['ringbuffer_path'] + "/" + subdir
                 print("Update properties file at ",metadataPath)
-
+                log("Try to update properties file",log_INFO)
                 f5 = h5py.File(metadataPath + '/drf_properties.h5','r+')
                 f5.attrs.__setitem__('subchannel_frequencies_MHz', chf)
                 f5.attrs.__setitem__('data_source',"TangerineSDR")
@@ -494,17 +493,22 @@ def sdr():
                 f5.close()
               except Exception as e: 
                 print(e)
+                log("Exception during properties file update",log_ERROR)
                 theStatus = "Properties file update error " + str(e)
+                log(theStatus, log_ERROR)
                 print("WARNING: unable to update DRF HDF5 properties file")
 
       if(form.stopDC.data ):
             send_to_DE(0,STOP_DATA_COLL + " 0") 
+            log("User clicked button to stop ringbuffer data collection",log_NOTICE)
             returned_value = os.system("killall -9 rgrcvr")
+            log("rgrcvr killed",log_INFO)
             print("F: after kill of rgrcvr, retcode=",returned_value)
             fhmode = parser['settings']['firehoser_mode']
             fhdirectory = parser['settings']['firehoser_path']
             fhtemp = parser['settings']['temp_path']
             if(fhmode == "On"): # clean up all resideuals from the firehose-R transfers
+              log("Cleaning up residual files after firehost-R transfers",log_NOTICE)
               command = "rm -r " + fhdirectory
               os.system(command)
               command = "mkdir " + fhdirectory
@@ -523,7 +527,7 @@ def sdr():
     #       print("F: user tried to start data collection before starting mainctl")
     #       form.errline = "ERROR. You must Start/restart mainctl before starting FT8?WSPR"
     #       return render_template('tangerine.html', form = form)
-
+        log("User clicked button to start propagation monitoringf",log_NOTICE)
         if(form.propFT.data == True):
             #send_to_mainctl(START_FT8_COLL,0)
             print("kill previous ft8rcvr, if any")
@@ -532,6 +536,7 @@ def sdr():
             returned_value = os.system("rm " + RAMpath + "/*.c2")
             returned_value = os.system("killall -9 ft8rcvr")
             print("F: after kill of ft8rcvr, retcode=",returned_value)
+            log("Trying to start ft8rcvr",log_INFO)
             returned_value = os.system("./ft8rcvr &")      
             print("F: after start of ft8rcvr, retcode=",returned_value) 
             send_to_DE(1,START_DATA_COLL + " 1") 
@@ -544,20 +549,24 @@ def sdr():
             returned_value = os.system("rm " + RAMpath + "/*.c2")
             returned_value = os.system("killall -9 wsprrcvr")
             print("F: after kill of wsprrcvr, retcode=",returned_value)
+            log("Trying to start wsprrcvr",log_INFO)
             returned_value = os.system("./wsprrcvr &")      
             print("F: after start of wsprrcvr, retcode=",returned_value) 
             send_to_DE(2,START_DATA_COLL + " 2") 
             statusWSPR = 1
         thePropStatus = 1
 
-      if(form.stopprop.data) :  # TODO: this code is duplicated, need to cleanly remove
+      if(form.stopprop.data) : 
+        log("User clicked button to stop propagatino monitoring",log_NOTICE)
         if(form.propFT.data == True):
          #   send_to_mainctl(STOP_FT8_COLL,0)
+            log("Killing ft8rcvr",log_DEBUG)
             returned_value = os.system("killall -9 ft8rcvr")
             print("F: after kill of ft8rcvr, retcode=",returned_value)
             send_to_DE(1,STOP_DATA_COLL + " 1")
             statusFT8 = 0
         if(form.propWS.data == True):
+            log("Killing wsprrcvr",log_DEBUG)
             returned_value = os.system("killall -9 wsprrcvr")
             print("F: after kill of wsprrcvr, retcode=",returned_value)
             send_to_DE(2,STOP_DATA_COLL + " 2")
@@ -576,6 +585,9 @@ def sdr():
       if(statusFHR == 1):
         theDataStatus = theDataStatus + "Firehose-R active"
       print("F: end of control loop; theStatus=", theStatus)
+      log("End of control loop",log_DEBUG)
+      log(theStatus, log_DEBUG)
+      log(theDataStatus, log_DEBUG)
       form.destatus = theStatus
       form.dataStat = theDataStatus
       return render_template('tangerine.html', form = form)
@@ -593,7 +605,7 @@ def restart():
 
   discover_DE()
 
-  print("RESTART: status = ",theStatus, " received = ", received)
+  print("RESTART: status = ",theStatus)
   time.sleep(0.5)
   dataCollStatus = int(parser['settings']['datacollstatus'])
   try:
@@ -615,12 +627,15 @@ def restart():
      theStatus = "F: DE_portB_socket, Exception " + str(e)
 #
   print("List of DE configuration ports:", DE_IP_portC)
+  log("DE configuration port",log_DEBUG)
+  log(DE_IP_portC[0], log_DEBUG)
   send_configuration()
 
 # ringbuffer setup
   ringbufferPath =    parser['settings']['ringbuffer_path']
   ringbufferMaxSize = parser['settings']['ringbuf_maxsize']
   # create any missing directories
+  log("Creating any missing directories",log_DEBUG)
   rcmd = "mkdir " + ringbufferPath
   os.system(rcmd)  
   rcmd = "mkdir " + parser['settings']['fftoutputpath']
@@ -636,7 +651,7 @@ def restart():
   rcmd = "mkdir " + parser['settings']['ramdisk_path'] + "/WSPR"
   os.system(rcmd)
   
-  
+  log("Restarting drf ringbuffer control",log_NOTICE)
 # halt any previously started ringbuffer task(s)
   rcmd = 'killall -9 drf'
   returned_value = os.system(rcmd)
@@ -654,6 +669,7 @@ def restart():
 def datarates():
   global theStatus
   print("Request datarates")
+  log("Data rates inquiry",log_INFO)
   send_to_mainctl(DATARATE_INQUIRY,0.1)
 #  print("after check status once, theStatus=",theStatus)
   return redirect('/')
@@ -686,6 +702,7 @@ def config():
    loglevel = int(parser['settings']['loglevel'])
    result = request.form
    if request.method == 'POST' and result.get('csubmit') != "Discard Changes" :
+     log("/config POST",log_INFO)
      statusCheck = True
      pageStatus = ""
      result = request.form
@@ -722,6 +739,7 @@ def config():
        fp.close()
        log("/config config.ini updated", log_INFO)
        if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
          os.system("logger -f config.ini")
        pageStatus = pageStatus + "Saved."
      else:
@@ -757,6 +775,7 @@ def danger():
    pageStatus =""
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
    if request.method == 'POST':
      result = request.form
      statusCheck = True
@@ -828,9 +847,13 @@ def danger():
        parser.set('settings', 'dataport2'            , result.get('dataport2'))
      
      if statusCheck == True:
+     
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
+       if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
+         os.system("logger -f config.ini")
        pageStatus = "SAVED."
      else:
        pageStatus = "ERROR. " + pageStatus + " NOT SAVED."
@@ -860,8 +883,6 @@ def danger():
      dataport2 = dataport2, status = pageStatus 
      )
 
-   
-  # return render_template('danger.html', form=form )
 
 @app.route("/channelantennasetup", methods = ['POST','GET'])
 def channelantennasetup():
@@ -877,6 +898,7 @@ def desetup():
    pageStatus = "Changes do not take effect until you click Save."
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
    ringbufferPath = parser['settings']['ringbuffer_path']
    maxringbufsize = parser['settings']['ringbuf_maxsize']
    fftoutputpath  = parser['settings']['fftoutputpath']
@@ -925,7 +947,7 @@ def desetup():
 # if we arrive here, user has hit one of the buttons on page
 
   # result = request.form  (redundant)
-
+   log("/desetup POST",log_NOTICE)
    print("F: result=", result.get('csubmit'))
 
 # If we reach this point, it is a POST.
@@ -1040,9 +1062,11 @@ def desetup():
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
+       if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
+         os.system("logger -f config.ini")
 
    
-
      channellistform = ChannelListForm()
      channelcount = parser['channels']['numChannels']
      form = ChannelControlForm()
@@ -1106,6 +1130,8 @@ def uploading():
    result = request.form
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
+   log("/uploading",log_NOTICE)
    if request.method == 'GET' or result.get('csubmit') == "Discard Changes" :
    
      form.throttle.data = parser['settings']['throttle']
@@ -1129,6 +1155,9 @@ def uploading():
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
+       if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
+         os.system("logger -f config.ini")
        pageStatus = "Saved."
      else:
        pageStatus = pageStatus + "NOT SAVED."
@@ -1145,6 +1174,8 @@ def callsign():
    form = CallsignForm()
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
+   log("/callsign",log_NOTICE)
    pageStatus = "Changes do not take effect until you click Save."
    if request.method == 'GET':
      c0 = parser['monitor']['c0']
@@ -1203,6 +1234,9 @@ def callsign():
        parser.set('monitor', 'g5', result.get('g5'))
        fp = open('config.ini','w')
        parser.write(fp)
+       if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
+         os.system("logger -f config.ini")
 
      c0 = parser['monitor']['c0']
      c1 = parser['monitor']['c1']
@@ -1227,6 +1261,8 @@ def notification():
    form = ServerControlForm()
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
+   log("/notification page",log_NOTICE)
    theStatus = ""
    if request.method == 'GET':
      print("F: smtpsvr = ", parser['email']['smtpsvr'])
@@ -1317,6 +1353,9 @@ def notification():
           parser.set('email', 'notification', "Off")
         fp = open('config.ini','w')
         parser.write(fp)
+        if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
+         os.system("logger -f config.ini")
 
      smtpsvr =     parser['email']['smtpsvr']
      emailfrom=    parser['email']['emailfrom']
@@ -1344,6 +1383,8 @@ def propagation():
    form = ChannelControlForm()
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
+   log("/propagation page",log_NOTICE)
    psk = False
    if(statusFT8 == 1 or statusWSPR == 1):
      form.status = "Propagation monitoring is active"
@@ -1409,6 +1450,10 @@ def propagation():
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
+       if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
+         os.system("logger -f config.ini")
+         
      ringbufferPath = parser['settings']['ringbuffer_path']
      form.antennaport0.data =     parser['settings']['ftant0']
      form.antennaport1.data =     parser['settings']['ftant1']
@@ -1442,6 +1487,8 @@ def propagation2():
    form = ChannelControlForm()
    parser = configparser.ConfigParser(allow_no_value=True)
    parser.read('config.ini')
+   loglevel = int(parser['settings']['loglevel'])
+   log("/propagation2 (WSPR) page",log_NOTICE)
    psk = False
    if(statusFT8 == 1 or statusWSPR == 1):
      form.status = "Propagation monitoring is active"
@@ -1508,6 +1555,9 @@ def propagation2():
        fp = open('config.ini','w')
        parser.write(fp)
        fp.close()
+       if(loglevel == log_DEBUG):
+         log("config.ini updated to:",log_DEBUG)
+         os.system("logger -f config.ini")
 
      form.antennaport0.data =     parser['settings']['wsant0']
      form.antennaport1.data =     parser['settings']['wsant1']
@@ -1538,7 +1588,7 @@ def propagation2():
 
 @app.route('/_ft8list')
 def ft8list():
-  print("ft8list")
+ # print("ft8list")
   ft8string = ""
   band = []
  # print("Entering _/ft8list")
@@ -1579,7 +1629,7 @@ def ft8list():
        str(band[i]) + ' - ' + pval + ' ",'
 
     ft8string = ft8string + '"end":" "}'
-    print("ft8string= " , ft8string)
+  #  print("ft8string= " , ft8string)
   except Exception as ex:
    # print("F: exception trying to build JSON FT8 list")
   #  print(ex)
@@ -1590,7 +1640,7 @@ def ft8list():
   
 @app.route('/_wsprlist')
 def wsprlist():
-  print("wsprlist")
+#  print("wsprlist")
   wsprstring = ""
   band = []
   chnl = []
@@ -1603,25 +1653,25 @@ def wsprlist():
     if(parser['settings'][ib] != "Off"):
       band.append(parser['settings'][ia])
       chnl.append(i)
-      print("wspr band list=" , band)
+    #  print("wspr band list=" , band)
 
-  print("chnl=",chnl)
+ # print("chnl=",chnl)
   try:
     plist = []
     for fno in range(len(band)):
 
  #    fname = '/mnt/RAM_disk/FT8/decoded' + str(fno) +'.txt'
      fname = parser['settings']['ramdisk_path'] + "/WSPR/decoded"  + str(chnl[fno]) +'z.txt'
-     print("checking file",fname)
+  #   print("checking file",fname)
      dm = time.ctime(os.path.getmtime(fname))
    #  dm = "d"
      f = open(fname,"r")
-     print("file opened")
+  #   print("file opened")
 
     # print("ft8 readlines")
      plist.append(len(f.readlines()))
     # print("append done")
-     print("plist=",plist)
+ #    print("plist=",plist)
      f.close()
       
 # here we build a JSON string to populate the WSPR panel
@@ -1643,13 +1693,11 @@ def wsprlist():
 
   return Response(wsprstring, mimetype='application/json')
   
-  
-  
 
 @app.route('/restore', methods = ['POST','GET'])
 def restore():
   global pageStatus
-
+  log("RESTORING CONFIG FROM MANUFACTURER SETTINGS",log_ALERT)
   print("XXXXXXXXXXXXXX    RESTORING CONFIG FROM MANUFACTURER'S SETTINGS XXXXXXXXXXXXXXXXX")
   flash("*** ORIGINAL CONFIGURATION RESTORED. **********")
   flash("Your configuration is saved as config.old .")
