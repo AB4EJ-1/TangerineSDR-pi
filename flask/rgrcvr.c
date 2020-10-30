@@ -383,6 +383,7 @@ int prep_data_files(char *startDT, char *endDT, char *ringbuffer_path)
   char fn[100] = "";
   char theNode[10] = "";
   char theGrid[10] = "";
+
   printf("RG: ringbuffer_path=%s\n",ringbuffer_path);
 // store the list of file names in the RAMdisk
   sprintf(fcommand,"drf ls %s -r -s %s -e %s > %s/dataFileList", ringbuffer_path, startDT, endDT, pathToRAMdisk);
@@ -405,7 +406,8 @@ int prep_data_files(char *startDT, char *endDT, char *ringbuffer_path)
 ///////////////////////////////////////////////////////////////////////////
 ///////// Thread for uploading firehoseR data to Central Control //////////
 void* firehose_uploader(void *threadid) {
-
+  char the_host[50] = "";
+  char the_token[100] = "";
   char sys_command[200];
   printf("RG: firehoseR uploader thread starting\n");
   num_items = rconfig("node",configresult,0);
@@ -430,6 +432,33 @@ void* firehose_uploader(void *threadid) {
     strcpy(the_grid,configresult);
     }
     
+    
+  num_items = rconfig("central_host",configresult,0);
+  if(num_items == 0)
+    {
+    printf("ERROR - grid setting not found in config.ini\n");
+    }
+  else
+    {
+    printf("central_host CONFIG RESULT = '%s'\n",configresult);
+    strcpy(the_host,configresult);
+    }
+  num_items = rconfig("token_value",configresult,0);
+  if(num_items == 0)
+    {
+    printf("ERROR - token_value setting not found in config.ini\n");
+    }
+  else
+    {
+    printf("token_value CONFIG RESULT = '%s'\n",configresult);
+    strcpy(the_token,configresult);
+    }
+    
+    
+    
+    
+    
+    
   sleep(20);
   while(1)
    {
@@ -442,7 +471,7 @@ void* firehose_uploader(void *threadid) {
 */
   printf("RG: ------FIREHOSE UPLOAD-----------\n");
 
-  sprintf(sys_command,"./firehose_xfer_auto.sh %s %s %s", data_path,temp_path,the_node);
+  sprintf(sys_command,"./firehose_xfer_auto.sh %s %s %s %s %s", data_path,temp_path,the_node,the_host,the_token);
   printf("RG: Uploader - executing command: %s \n",sys_command); 
   int r = system(sys_command); 
   printf("RG: System command retcode=%i\n",r);

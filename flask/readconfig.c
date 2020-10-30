@@ -24,11 +24,15 @@ int openConfigFile()
  // printf("test - read config file\n");
  // printf("CFG: opening main.cfg\n"); 
   int r1 = system("pwd");
+  int r = 0;
+  char logmsg[100]="";
   if(! config_read_file(&cfg, "./main.cfg"))
   {
     fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
             config_error_line(&cfg), config_error_text(&cfg));
     puts("ERROR - there is a problem with main.cfg configuration file");
+    sprintf(logmsg,"logger -s -p user.err openConfigFile: could not read main.cfg");
+    r = system(logmsg);
     config_destroy(&cfg);
     return(EXIT_FAILURE);
   }
@@ -40,6 +44,8 @@ int openConfigFile()
     }
   else
     fprintf(stderr, "No 'config_path' setting in configuration file main.cfg.\n");
+    sprintf(logmsg,"logger -s -p user.err openConfigFile No config_path setting in configuration file main.cfg");
+    r = system(logmsg);
     return(EXIT_FAILURE);
  // printf("test - config path=%s\n",configPath);
   return(0);
@@ -50,7 +56,7 @@ int rconfig(char * arg, char * result, int testThis) {
 const char delimiters[] = " =";
 
 
-  int rc = openConfigFile();
+//  int rc = openConfigFile();
  // printf("retcode from config file open=%i\n",rc);
 
 //printf("start fcn looking for %s\n", arg);
@@ -59,15 +65,24 @@ char *line = NULL;
 size_t len = 0;
 ssize_t read;
 char *token, *cp;
+char logmsg[100]="";
+int r=0;
+/*
 if (testThis)
   {
   fp = fopen( "/home/odroid/projects/TangerineSDR-notes/flask/config.ini", "r");
   }
 else
-  fp = fopen(configPath, "r");
+*/
+sprintf(logmsg,"logger -s -p user.debug rconfig: look for value of %s", arg);
+r = system(logmsg);
+
+fp = fopen("./config.ini", "r");
 if (fp == NULL)
   {
   printf("FATAL ERROR - could not open config file at %s\n",configPath);
+  sprintf(logmsg,"logger -s -p user.err rconfig: could not open config.ini file");
+  r = system(logmsg);
   exit(-1);
   }
 //puts("read config");
@@ -86,9 +101,11 @@ while ((read = getline(&line, &len, fp)) != -1) {
   strncpy(result,token,strlen(token)-1);
   result[strlen(token)-1] = 0x00;  // terminate the string
   free(cp);
+  fclose(fp);
   return(1);
    }
   }
   free(cp);
+  fclose(fp);
   return(0);
 }

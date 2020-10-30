@@ -69,10 +69,13 @@ int main() {
   char mygrid[20];
   char myantenna0[50];  // there is length limit on these in upload-to-pskreporter
   char myantenna1[50];
+  char logmsg[200];
   notification = 0;
 
   int num_items = 0;
   printf("ft8rcvr start\n");
+  sprintf(logmsg,"logger ft8rcvr: starting");
+  int r = system(logmsg);
   num_items = rconfig("ramdisk_path",configresult,0);
   if(num_items == 0)
     {
@@ -147,6 +150,8 @@ int main() {
 
 
     printf("Starting FT8 receiving, port=%i\n",LH_DATA_IN_port);
+    sprintf(logmsg,"logger ft8rcvr: Starting FT8 receiving, port=%i",LH_DATA_IN_port);
+    r = system(logmsg);
     int streamID = 0;
 	int sockfd; 
 	struct sockaddr_in servaddr, cliaddr; 
@@ -213,6 +218,8 @@ int main() {
 				MSG_WAITALL, ( struct sockaddr *) &cliaddr, 
 				&len);
      streamID = (int)ft8buffer.stream_ID[3];
+   //  sprintf(logmsg,"logger ft8rcvr: received buffer on stream %i",streamID);
+   //  r = system(logmsg);
 	// printf("streamID : %i\n", (int)ft8buffer.stream_ID[3]); 
      if(ft8active[streamID] == 0) //this ft8 stream not yet active
       {
@@ -223,6 +230,8 @@ int main() {
        int seconds = info->tm_sec;
        if(seconds > 0)
          printf("FT8 will start in = %i seconds \n",60-seconds);
+       //  sprintf(logmsg,"logger ft8rcvr: FT8 will start in = %i seconds ",60-seconds);
+       //  r = system(logmsg);
 
        if(seconds != 0)  // check if exact top of minute
          {
@@ -232,7 +241,9 @@ int main() {
        ft8counter[streamID] = 0;            // zero this counter
        inputcount[streamID] = 0;
        printf("\nSaving FT8 for decode\n");
-
+   //    printf("FT8 will start in = %i seconds \n",60-seconds);
+       sprintf(logmsg,"logger ft8rcvr: Saving FT8 data ");
+       r = system(logmsg);
        t = time(NULL);
        if((gmt = gmtime(&t)) == NULL)
           { fprintf(stderr,"Could not convert time\n"); }
@@ -243,6 +254,8 @@ int main() {
        printf("create raw data FT8 file %s\n",name[streamID]);
        if((fp[streamID] = fopen(name[streamID], "wb")) == NULL)
          { fprintf(stderr,"Could not open file %s \n",name[streamID]);
+           sprintf(logmsg,"logger ft8rcvr: Error: could not open file %s ",name[streamID]);
+           r = system(logmsg);
           return -1;
          }
        double dialfreq1 = dialfreq[streamID];  // streamIDs start with 1, list with 0 (TODO: may change with TangerineDE)
@@ -278,7 +291,8 @@ int main() {
          // trigger processing of the ft8 data file
 
            printf("FT8 decoding...\n");
-           
+           sprintf(logmsg,"logger ft8rcvr: FT8 decoding ");
+           r = system(logmsg);
           int uplcontrol = 0;  // determine if user wants spots uploaded
           num_items = rconfig("psk_upload",configresult,0);
           if(num_items == 0)
@@ -349,11 +363,14 @@ int main() {
            }
            
                    
-           char mycmd[100];
+           char mycmd[200];
            
            sprintf(mycmd, "sh ./decodeFT8_and_send.sh %s %i %s %s %f %s %i %s &",pathToRAMdisk,streamID,usercall,usernode,dialfreq[streamID],name[streamID],uplcontrol,antennaDesc);
            printf("Issue command: %s\n",mycmd);
            int ret = system(mycmd);
+           sprintf(logmsg,"logger ft8rcvr: Issue command: %s ",mycmd);
+           r = system(logmsg);
+           
            // Format of the upload file:   see https://pskreporter.info/pskdev.html
 
            // Note: this assumes that decoder (ft8d_del) deletes work file when done.
@@ -362,7 +379,7 @@ int main() {
            
            
            
-
+/*
            if(0 == 1) // diabled for now
              {
              sprintf(mycmd,"nice -n9 awk '!seen[$7]++' %s/FT8/decoded%i.txt > %s/FT8/decoded%iz.txt",pathToRAMdisk,streamID,pathToRAMdisk,streamID);
@@ -397,6 +414,7 @@ int main() {
                ret = system(mycmd);
                }
              }
+             */
           
            }
          }
