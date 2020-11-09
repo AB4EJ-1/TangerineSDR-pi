@@ -322,16 +322,16 @@ int main() {
            strcpy(usercall,configresult);
            }
            
-          char usernode[20] = ""; 
-          num_items = rconfig("node",configresult,0);
+          char usergrid[20] = ""; 
+          num_items = rconfig("grid",configresult,0);
           if(num_items == 0)
            {
             printf("ERROR - node setting not found in config.ini\n");
            }
            else
            {           
-           printf("node CONFIG RESULT = '%s'\n",configresult);
-           strcpy(usernode,configresult);
+           printf("grid CONFIG RESULT = '%s'\n",configresult);
+           strcpy(usergrid,configresult);
            }
                  
            
@@ -365,7 +365,7 @@ int main() {
                    
            char mycmd[200];
            
-           sprintf(mycmd, "sh ./decodeFT8_and_send.sh %s %i %s %s %f %s %i %s &",pathToRAMdisk,streamID,usercall,usernode,dialfreq[streamID],name[streamID],uplcontrol,antennaDesc);
+           sprintf(mycmd, "sh ./decodeFT8_and_send.sh %s %i %s %s %f %s %i %s &",pathToRAMdisk,streamID,usercall,usergrid,dialfreq[streamID],name[streamID],uplcontrol,antennaDesc);
            printf("Issue command: %s\n",mycmd);
            int ret = system(mycmd);
            sprintf(logmsg,"logger ft8rcvr: Issue command: %s ",mycmd);

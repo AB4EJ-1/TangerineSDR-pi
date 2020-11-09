@@ -15,6 +15,7 @@ class MainControlForm(FlaskForm):
   modeR =     BooleanField('Ringbuffer',default=False)
   modeS =     BooleanField('Snapshotter',default=False)
   modeF =     BooleanField('Firehose(upload)',default=False)
+  modeL =     BooleanField('FirehoseL',default=False)
   startDC =   SubmitField("Start Data Collection")
   stopDC =    SubmitField("Stop Data Collection")
   restartDE = SubmitField("Start/Restart Data Engine")

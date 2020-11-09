@@ -409,6 +409,7 @@ void* firehose_uploader(void *threadid) {
   char the_host[50] = "";
   char the_token[100] = "";
   char sys_command[200];
+  char logmsg[300] = "";
   printf("RG: firehoseR uploader thread starting\n");
   num_items = rconfig("node",configresult,0);
   if(num_items == 0)
@@ -431,8 +432,7 @@ void* firehose_uploader(void *threadid) {
     printf("grid CONFIG RESULT = '%s'\n",configresult);
     strcpy(the_grid,configresult);
     }
-    
-    
+       
   num_items = rconfig("central_host",configresult,0);
   if(num_items == 0)
     {
@@ -453,27 +453,18 @@ void* firehose_uploader(void *threadid) {
     printf("token_value CONFIG RESULT = '%s'\n",configresult);
     strcpy(the_token,configresult);
     }
-    
-    
-    
-    
-    
-    
+ 
   sleep(20);
   while(1)
    {
-/*
-   if (firehoseUploadActive == 0)  // firehoseR upload halted
-     {
-     printf("RG: ------ FIREHOSE UPLOAD SHUTTING DOWN -------\n");
-     return;
-     }
-*/
+
   printf("RG: ------FIREHOSE UPLOAD-----------\n");
 
   sprintf(sys_command,"./firehose_xfer_auto.sh %s %s %s %s %s", data_path,temp_path,the_node,the_host,the_token);
   printf("RG: Uploader - executing command: %s \n",sys_command); 
-  int r = system(sys_command); 
+  int r = system(sys_command);
+  sprintf(logmsg,"logger -s -p user.info rgrcvr: FIREHOSE upload command %s",sys_command);
+  r = system(logmsg);
   printf("RG: System command retcode=%i\n",r);
 
    sleep(10);

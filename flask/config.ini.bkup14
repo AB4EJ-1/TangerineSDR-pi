@@ -1,6 +1,6 @@
 [profile]
-token_value = 3BD69855A8BAE408366C10002CF
-node = N12345
+token_value = NLKAJDFHJ44TR9XZNJD
+node = N000001
 grid = EM63fj
 callsign = AB4EJ
 latitude = 33.395833333333336
@@ -14,9 +14,9 @@ gpsdo = Yes
 [settings]
 mode = ringbuffer
 ringbuffer_mode = Off
-snapshotter_mode = On
+snapshotter_mode = Off
 firehosel_mode = Off
-firehoser_mode = Off
+firehoser_mode = On
 ft8_mode = On
 wspr_mode = On
 psk_upload = On
@@ -25,7 +25,7 @@ datacollstatus = 0
 ringbuffer_path = /media/ubuntu/tangerine1/hdf5
 ramdisk_path = /tmp/RAM_disk
 ringbuf_maxsize = 10GB
-fftoutput_path = /media/ubuntu/tangerine1/snapshotter
+fftoutputpath = /media/ubuntu/tangerine1/snapshotter
 upload_path = /media/ubuntu/tangerine1/uploadTemp
 firehoser_path = /tmp/RAM_disk/firehose
 temp_path = /tmp/RAM_disk/temp
@@ -43,8 +43,10 @@ controlport = 6100
 de_ip = 192.168.1.206
 de_port = 1024
 throttle = 1000000
-central_host = 192.168.1.67
+central_host = pswsnetwork.caps.ua.edu
 central_port = 5000
+firehoseL_host_IP = 192.168.1.67
+firehoseL_host_port = 3000
 dr_pending = 0005
 heartbeat_interval = 180
 ftant0 = 0
@@ -55,8 +57,8 @@ ftant4 = Off
 ftant5 = Off
 ftant6 = Off
 ftant7 = Off
-ft80f = 14.074
-ft81f = 10.136
+ft80f = 21.074
+ft81f = 14.074
 ft82f = 1.84
 ft83f = 1.84
 ft84f = 1.84
@@ -81,6 +83,7 @@ ws5f = 21.0946
 ws6f = 24.9246
 ws7f = 28.1246
 loglevel = 5
+
 [channels]
 numchannels = 1
 datarate = 48000
@@ -151,4 +154,5 @@ smtpport = 2525
 smtptimeout = 30
 smtpuid = engelke77@bellsouth.net
 smtppw = 1pO6f8Y9X43rYA08@
+notification = Off
 
