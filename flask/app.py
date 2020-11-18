@@ -98,7 +98,8 @@ TIME_STAMP        = "TS"
 CREATE_CHANNEL    = "CC"
 CONFIG_CHANNEL    = "CH"  # This sets up one channel, which may contain mutiple subchannels
 UNDEFINE_CHANNEL  = "UC"
-FIREHOSE_SERVER   = "FH"
+FIREHOSE_SERVER   = "FH"  # when DE is to be put into Firehose-L mode
+STOP_FIREHOSE     = "FX"  # to take DE out of Firehose-L mode
 START_DATA_COLL   = "SC"
 STOP_DATA_COLL    = "XC"
 DEFINE_FT8_CHAN   = "FT"
@@ -398,6 +399,7 @@ def sdr():
         print("F: Main control POST; modeR=", form.modeR.data)
         print("F: Main control POST; modeS=", form.modeS.data)
         print("F: Main control POST; modeF=", form.modeF.data)
+        print("F: Main control POST; modeL=", form.modeL.data)
         form.errline = ""
         print("Entering main route")
         print("restart button -", form.restartDE.data)
@@ -422,6 +424,7 @@ def sdr():
             log("Error - user selected Firehose-L and some other mode",log_NOTICE)
             print("F: error - user selected both Firehose-L and some other mode")
             form.errline = "Firehose-L mode can't be combined with any other data acquisition mode"
+            form.dataStat = "* * ERROR * * See below."
             return render_template('tangerine.html', form=form)
 
 
@@ -456,11 +459,17 @@ def sdr():
         else:
             parser.set('settings', 'WSPR_mode', 'Off')
             
+        if (form.modeL.data == False):
+            parser.set('settings', 'firehosel_mode',    'Off')
+            
         if (form.modeL.data): # if you run firehose-L, it is only data acqusition mode allowed
             parser.set('settings', 'ringbuffer_mode',  'Off')  
             parser.set('settings', 'snapshotter_mode', 'Off')  
             parser.set('settings', 'firehoser_mode',   'Off')
-            parser.set('settings', 'firehosel_mode',    'On')    
+            parser.set('settings', 'firehosel_mode',    'On')   
+            form.modeR.data = False
+            form.modeS.data = False
+            form.modeF.data = False 
 
         fp = open('config.ini', 'w')
         parser.write(fp)
@@ -497,7 +506,8 @@ def sdr():
                 form.errline = 'ERROR: Path to digital data storage not configured'  
                 
             else:
-            
+                if(parser['settings']['firehosel_mode'] != "On"): 
+                    send_to_DE(0, STOP_FIREHOSE)  # ensure we are not in Firehse-L mode  
                 if(parser['settings']['firehosel_mode'] == "On"): # start firehose L data collection
                     # send channel config
                       #  TODO: this might already have been done; verify
