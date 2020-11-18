@@ -145,7 +145,7 @@ def is_numeric(s):
         print("Value error")
         return False
 
-
+# send command to DE
 def send_to_DE(channelNo, msg):
     global DE_IP_addr, DE_IP_portB, DE_portB_socket, LH_IP_portA, DE_IP_portC, LH_IP_portF
     log("send_to_DE, channelNo " + str(channelNo) + " msg=" + msg, log_DEBUG)
@@ -162,7 +162,7 @@ def send_to_DE(channelNo, msg):
     DE_portC_socket.close()
     return
 
-
+# create a channel
 def create_channel(channelNo, configPort, dataPort):
     global DE_IP_addr, DE_IP_portB, DE_portB_socket, LH_IP_portA, DE_IP_portC, LH_IP_portF
     log("Entering create_channel", log_DEBUG)
@@ -190,8 +190,7 @@ def create_channel(channelNo, configPort, dataPort):
     return
 
 
-def discover_DE(
-):  # Here we call the UDPdiscover C routine to find fist Tangerine on network
+def discover_DE():  # Here we call the UDPdiscover C routine to find first Tangerine on network
     global DE_IP_addr, DE_IP_portB, LH_IP_portA
     # Access the shared library (i.e., *.so)
     libc = CDLL("./discoverylib.so")
@@ -216,8 +215,10 @@ def discover_DE(
     print("Tangerine at IP address %s" % DE_IP_addr)
     print("At port B = ", DE_IP_portB)
     return
+    
 
 
+# send standard configuration
 def send_configuration():
     print("set up configuration")
     log("Set up configuration", log_NOTICE)
@@ -383,6 +384,10 @@ def sdr():
             form.modeF.data = True
         else:
             form.modeF.data = False
+        if (parser['settings']['firehosel_mode'] == "On"):
+            form.modeL.data = True
+        else:
+            form.modeL.data = False
 
         form.destatus = theStatus
         form.dataStat = theDataStatus
@@ -412,6 +417,12 @@ def sdr():
             print("F: error - user selected both ringbuffer and firehose")
             form.errline = "Select EITHER Ringbuffer or Firehose mode"
             return render_template('tangerine.html', form=form)
+            
+        if((form.modeR.data or form.modeF.data or form.modeS.data) and form.modeL.data):
+            log("Error - user selected Firehose-L and some other mode",log_NOTICE)
+            print("F: error - user selected both Firehose-L and some other mode")
+            form.errline = "Firehose-L mode can't be combined with any other data acquisition mode"
+            return render_template('tangerine.html', form=form)
 
 
 # Other checks to be added include - paths/directories exist for all selected outputs;
@@ -420,30 +431,36 @@ def sdr():
 # Set configuration to reflect current settings.
 
         print("F: setting config for modes")
-        if (form.modeR.data == True):
+        if (form.modeR.data):
             parser.set('settings', 'ringbuffer_mode', 'On')
         else:
             parser.set('settings', 'ringbuffer_mode', 'Off')
 
-        if (form.modeS.data == True):
+        if (form.modeS.data):
             parser.set('settings', 'snapshotter_mode', 'On')
         else:
             parser.set('settings', 'snapshotter_mode', 'Off')
 
-        if (form.modeF.data == True):
+        if (form.modeF.data):
             parser.set('settings', 'firehoser_mode', 'On')
         else:
             parser.set('settings', 'firehoser_mode', 'Off')
 
-        if (form.propFT.data == True):
+        if (form.propFT.data):
             parser.set('settings', 'FT8_mode', 'On')
         else:
             parser.set('settings', 'FT8_mode', 'Off')
 
-        if (form.propWS.data == True):
+        if (form.propWS.data):
             parser.set('settings', 'WSPR_mode', 'On')
         else:
             parser.set('settings', 'WSPR_mode', 'Off')
+            
+        if (form.modeL.data): # if you run firehose-L, it is only data acqusition mode allowed
+            parser.set('settings', 'ringbuffer_mode',  'Off')  
+            parser.set('settings', 'snapshotter_mode', 'Off')  
+            parser.set('settings', 'firehoser_mode',   'Off')
+            parser.set('settings', 'firehosel_mode',    'On')    
 
         fp = open('config.ini', 'w')
         parser.write(fp)
@@ -463,9 +480,8 @@ def sdr():
         #           print(stdout)
         #        return  render_template('tangerine.html', form = form)
 
-        if (form.startDC.data
-            ):  # User clicked button to start ringbuffer-type data collection
-            log("User clicked button to start ringbuffer data coll.",
+        if (form.startDC.data):  # User clicked button to start data acquisition
+            log("User clicked button to start data acquisition",
                 log_NOTICE)
             if (len(parser['settings']['firehoser_path']) < 1
                     and form.mode.data == 'firehoseR'):
@@ -478,8 +494,19 @@ def sdr():
                 print("F: configured ringbuffer path='",
                       parser['settings']['ringbuffer_path'], "'",
                       len(parser['settings']['ringbuffer_path']))
-                form.errline = 'ERROR: Path to digital data storage not configured'
+                form.errline = 'ERROR: Path to digital data storage not configured'  
+                
             else:
+            
+                if(parser['settings']['firehosel_mode'] == "On"): # start firehose L data collection
+                    # send channel config
+                      #  TODO: this might already have been done; verify
+                    # put into FH mode
+                    send_to_DE(0, FIREHOSE_SERVER + " " + parser['settings']['firehosel_host_ip']
+                      + " " + parser['settings']['firehosel_host_port'] )
+                      # command to start data acquisition to local fast server
+                  #  send_to_DE(0, START_DATA_COLL + " 0")
+                    
 
                 # User wants to start data collection. Is there an existing drf_properties file?
                 # If so, we delete it so that system will build a new one reflecting
@@ -1252,6 +1279,12 @@ def uploading():
             statusCheck = False
         if result.get('firehoseL_port').isnumeric() == False:
             pageStatus = "FirehoseL port setting must be numeric. "
+            statusCheck = False
+            
+        try:
+            socket.inet_aton(result.get('firehoseL_IP'))
+        except socket.error:
+            pageStatus = "Firehose L IP is not a valid IP address"
             statusCheck = False
 
         if statusCheck == True:
