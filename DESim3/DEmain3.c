@@ -129,10 +129,6 @@ static uint16_t LH_DATA_IN_port[3];  // port F; LH listens for spectrum data on 
 static uint16_t DE_CH_IN_port[3] = {50001,50002,50003};    // port D; DE listens channel setup on this port
 static uint16_t LH_DATA_OUT_port ; // for sending (outbound) data (e.g., mic audio) to DE (unused)
 
-static uint16_t FH_DATA_IN_port;
-static char FH_DATA_IN_IP[30];
-static uint16_t firehoseLmode = 0; // set to 1 when in Firehose-L mode
-
 
 static  fftwf_complex FFT_data[FFT_N];
 static  fftwf_plan p;
@@ -401,133 +397,10 @@ void *sendwsprflex(void * threadid){
  }  // end of function
 
 
-//////////////send FlexData using Firehose-L mode  ////////////////////////////
-void *sendFHData(void * threadid){
-// forward IQ data from flex to local fast server in VITA-T format
-  printf("Starting FIREHOSE-L thread\n");
-// TODO: add 32-bit time stamp & buffer count in right place for use by LH (DRF ddata handler)
-  uint64_t theSampleCount = 0;
-  fd_set readfd;
-  int sockRGout;
-  int count;
-  if((sockRGout = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
-          {
-          perror("socket");
-          printf("creating sockRGout failed\n");
-          }
-      else
-          {
-          printf("sockRGout created\n");
-          }
-  struct sockaddr_in si_LH_portF0;  // will use sockRGout
-  memset((char *) &si_LH_portF0, 0, sizeof(si_LH_portF0));
-  si_LH_portF0.sin_family = AF_INET;
- // si_LH_portF0.sin_port = htons(LH_DATA_IN_port[0]);
-//  si_LH_portF0.sin_addr.s_addr = client_addr.sin_addr.s_addr; 
 
 
-  si_LH_portF0.sin_addr.s_addr = inet_addr(FH_DATA_IN_IP);
-  si_LH_portF0.sin_port = htons(FH_DATA_IN_port);
-  
 
-  printf("in Flex DATA thread; start to send data to Port F %i; init sock5\n",LH_DATA_IN_port[0]);
-  sock5 = socket(AF_INET, SOCK_DGRAM, 0);
-  printf("after socket assign, sock5= %i\n",sock5);
-  if(sock5 < 0) {
-    printf("sock5 error\n");
-    int r=-1;
-    int *ptoi;
-    ptoi = &r;
-    return (ptoi);
-    }
-  int yes = 1;  // make socket re-usable
-  if(setsockopt(sock5, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
-   printf("sock5: Error setting sock option SO_REUSEADDR\n");
-    int r=-1;
-    int *ptoi;
-    ptoi = &r;
-    return (ptoi);
-   }
 
-  printf("sock5 created\n");
-  int addr_len = sizeof(struct sockaddr_in);
-  memset((void*)&flex_addr, 0, addr_len);
-  flex_addr.sin_family = AF_INET;
-  flex_addr.sin_addr.s_addr = htons(INADDR_ANY);
-  flex_addr.sin_port = htons(FLEXDATA_IN);
-  printf("bind sock5\n:");
-  int ret = bind(sock5, (struct sockaddr*)&flex_addr, addr_len);
-  if (ret < 0){
-    printf("sock5 (Flex) bind error\n");
-    int r=-1;
-    int *ptoi;
-    ptoi = &r;
-    return (ptoi);
-     }
-  FD_ZERO(&readfd);
-  FD_SET(sock5, &readfd);
-  printf("in flex Data thread read from port %i\n",FLEXDATA_IN);
- // client_addr.sin_port = htons(LH_DATA_IN_port[0]);
- ret = 1;
- while(1==1) {  // repeating loop
-
-   if(stopDataColl)
-	 {
-     puts("UDP thread end");
-     ft8active = 0;
-     close(sock5);
-	 pthread_exit(NULL);
-	 }
-
-  if(ret > 0){
-   if (FD_ISSET(sock5, &readfd)){
- //   printf("try read\n");
-    count = recvfrom(sock5, &iqbuffer2_in, sizeof(iqbuffer2_in),0, (struct sockaddr*)&flex_addr, &addr_len);
-  //  printf("bytes received = %i\n",count);
- //   printf("VITA header= %x %x\n",iqbuffer2_in.VITA_hdr1[0],iqbuffer2_in.VITA_hdr1[1]);
- //   printf("stream ID= %x%x%x%x\n", iqbuffer2_in.stream_ID[0],iqbuffer2_in.stream_ID[1], iqbuffer2_in.stream_ID[2],iqbuffer2_in.stream_ID[3]);
-    memcpy(iqbuffer2_out.VITA_hdr1, iqbuffer2_in.VITA_hdr1, sizeof(iqbuffer2_out.VITA_hdr1));
-
-    iqbuffer2_out.VITA_packetsize = sizeof(iqbuffer2_out);
-    iqbuffer2_out.stream_ID[0] = 0x52;   // put "RG" into stream ID
-    iqbuffer2_out.stream_ID[1] = 0x47;
-    iqbuffer2_out.stream_ID[2] = 1;   // number of embedded subchannels in buffer
-    iqbuffer2_out.stream_ID[3] = iqbuffer2_in.stream_ID[3];
-    iqbuffer2_out.time_stamp = (uint32_t)time(NULL);
-    iqbuffer2_out.sample_count = theSampleCount;
-    theSampleCount++; // this is actually a packet count, at least for now
-  //  printf("timestamp = %i \n",iqbuffer2_out.time_stamp);
-    for(int i=0; i < 512; i++)
-     {
-      iqbuffer2_out.theDataSample[i] = iqbuffer2_in.theDataSample[i];
-     }
-
-    count = recvfrom(sock5, &iqbuffer2_in, sizeof(iqbuffer2_in),0, (struct sockaddr*)&flex_addr, &addr_len);
- //   printf("bytes received = %i\n",count);
-
-    for(int i=0; i < 512; i++)
-     {
-      iqbuffer2_out.theDataSample[i + 512] = iqbuffer2_in.theDataSample[i];
-     }
-    int slen = sizeof(si_LH_portF0);
-  //  int sentBytes = sendto(sock, (const struct dataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
-	//      (struct sockaddr*)&portF_addr, sizeof(portF_addr));
-
-  //  printf(" dest IP addr = %s\n",inet_ntoa(si_LH_portF0.sin_addr));
-  //  printf(" dest port = %d\n",(int)ntohs(si_LH_portF0.sin_port));
-    int sentBytes = sendto(sockRGout, (const struct dataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
-	      (struct sockaddr*)&si_LH_portF0, slen);
-    if(sentBytes < 0)
-      {
-      perror("sendto");
-      printf("Send to portF, bytes = %i\n",sentBytes);
-       }
-
-    }
-   }  // end of repeating loop
-  }
-
-}
 
 
 
@@ -749,7 +622,8 @@ while(1)
       operand = strtok(NULL, s);
       printf("port F = %s\n",operand);
       LH_DATA_IN_port[channelNo] = atoi(operand);
-     
+
+      
       char configReply[20] = "";
 
 
@@ -945,31 +819,6 @@ void *handleCommands(void* c)
 
       }
 
-    if(memcmp(workBuf, FIREHOSE_SERVER, 2)==0)
-      {
-      printf("SWITCHING TO FIREHOSE-L MODE; channel#%i\n",channelNo);
-
-      const char s[2] = " ";
-      char *operand;
-      operand = strtok(workBuf, s);  // this is the "FH"
-      
-      printf("operand = %s\n",operand);
-      operand = strtok(NULL, s);
-      strcpy(FH_DATA_IN_IP, operand); 
-      printf("IP = '%s'\n",FH_DATA_IN_IP);
-      
-      operand = strtok(NULL, s);
-
-      FH_DATA_IN_port = atoi(operand);
-      printf("port = %i\n",FH_DATA_IN_port);
-      firehoseLmode = 1; // set mode; applies only for Channel 0
-
-      }
-    if(memcmp(workBuf, STOP_FIREHOSE, 2)==0)
-      {
-      printf("Switch mode out of Firehose-L\n");
-      firehoseLmode = 0;
-      }
 
 
 // Is this a command to start data collection?  
@@ -995,15 +844,8 @@ void *handleCommands(void* c)
 	  stopDataColl = 0;
   	  long j = 1;
   	  pthread_t datathread;
-      int rc = 0;
-      if(firehoseLmode)
-        {
-  	    rc = pthread_create(&datathread, NULL, sendFHData, (void *)j);
-        }
-      else
-        {
-  	    rc = pthread_create(&datathread, NULL, sendFlexData, (void *)j);
-        }
+
+  	  int rc = pthread_create(&datathread, NULL, sendFlexData, (void *)j);
   	  printf("thread start rc = %d\n",rc);
 
       client_addr.sin_port = htons(LH_CONF_IN_port[channelNo] ); 

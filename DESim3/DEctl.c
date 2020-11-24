@@ -77,6 +77,16 @@ int main() {
     perror("sock error\n");
     return -1;
     }
+  int reuse = 1;
+  if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse,sizeof(reuse)) < 0)
+     printf("SETTING SOCKOPT reuse addr failed");
+  if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, (const char*)&reuse,sizeof(reuse)) < 0)
+     printf("SETTING SOCKOPT reuse port failed");
+  struct linger lin;
+  lin.l_onoff = 0;
+  lin.l_linger = 0;
+  setsockopt(sock, SOL_SOCKET, SO_LINGER, (const char*)&lin, sizeof(lin));
+
 /*
   printf("set up sock1\n");
   sock1 = socket(AF_INET, SOCK_DGRAM, 0);  // for reply via Port B
