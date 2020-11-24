@@ -99,14 +99,14 @@ CREATE_CHANNEL    = "CC"
 CONFIG_CHANNEL    = "CH"  # This sets up one channel, which may contain mutiple subchannels
 UNDEFINE_CHANNEL  = "UC"
 FIREHOSE_SERVER   = "FH"  # when DE is to be put into Firehose-L mode
-STOP_FIREHOSE     = "FX"  # to take DE out of Firehose-L mode
+STOP_FIREHOSE     = "XF"  # to take DE out of Firehose-L mode
 START_DATA_COLL   = "SC"
 STOP_DATA_COLL    = "XC"
 DEFINE_FT8_CHAN   = "FT"
-START_FT8_COLL    = "SF"
-STOP_FT8_COLL     = "XF"
-START_WSPR_COLL   = "SW"
-STOP_WSPR_COLL    = "XW"
+START_FT8_COLL    = "SF"  # DEPRECATED
+STOP_FT8_COLL     = "XF"  # DEPRECATED
+START_WSPR_COLL   = "SW"  # DEPRECATED
+STOP_WSPR_COLL    = "XW"  # DEPRECATED
 LED_SET           = "SB"
 UNLINK            = "UL"
 HALT_DE           = "XX"
@@ -217,11 +217,8 @@ def discover_DE():  # Here we call the UDPdiscover C routine to find first Tange
     print("At port B = ", DE_IP_portB)
     return
     
-
-
-# send standard configuration
-def send_configuration():
-    print("set up configuration")
+def send_config_ch0():
+    print("Send config for channel 0")
     log("Set up configuration", log_NOTICE)
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
@@ -232,8 +229,7 @@ def send_configuration():
     subchannel_list = ""
     count = 0
     while count < int(
-            noChannels
-    ):  # this is actually the no. of data acquisition subchannels
+            noChannels):  # this is actually the no. of data acquisition subchannels
         ant = parser['channels']['p' + str(count)]
         freq = parser['channels']['f' + str(count)]
         subchannel_list = subchannel_list + str(
@@ -243,6 +239,39 @@ def send_configuration():
     print("config 0 =", msg)
     log("send_configuration, config 0 RG: " + msg, log_DEBUG)
     send_to_DE(0, msg)
+    return
+
+
+# send standard configuration
+def send_configuration():
+    print("F: call send_config_ch0()")
+    send_config_ch0()
+    
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read('config.ini')
+
+#    print("set up configuration")
+#    log("Set up configuration", log_NOTICE)
+#    parser = configparser.ConfigParser(allow_no_value=True)
+#    parser.read('config.ini')
+#    noChannels = parser['channels']['numchannels']
+#    # set up data acquisition. This is always Channel 0, with multiple subchannels.
+#    msg = CONFIG_CHANNEL + " 0 VT " + noChannels + " " + parser['channels'][
+#        'datarate'] + " "  # specify VITA-T (interleaved IQ smaples)
+#    subchannel_list = ""
+#    count = 0
+#    while count < int(
+#            noChannels):  # this is actually the no. of data acquisition subchannels
+#        ant = parser['channels']['p' + str(count)]
+#        freq = parser['channels']['f' + str(count)]
+#        subchannel_list = subchannel_list + str(
+#            count) + " " + ant + " " + freq + " "
+#        count = count + 1
+#    msg = msg + subchannel_list
+#    print("config 0 =", msg)
+#    log("send_configuration, config 0 RG: " + msg, log_DEBUG)
+#    send_to_DE(0, msg)
+
     # set up FT8
     msg = CONFIG_CHANNEL + " 1 V4 "
     subchannel_list = ""
@@ -418,6 +447,7 @@ def sdr():
                 log_NOTICE)
             print("F: error - user selected both ringbuffer and firehose")
             form.errline = "Select EITHER Ringbuffer or Firehose mode"
+            form.dataStatus = "* * ERROR * *  See below."
             return render_template('tangerine.html', form=form)
             
         if((form.modeR.data or form.modeF.data or form.modeS.data) and form.modeL.data):
@@ -1229,7 +1259,9 @@ def desetup():
             channellistform.channels.append_entry(channelform)
 
         if (statusCheck == True):
-            send_configuration()
+            send_configuration() # note: this saves config for FT8?WSPR as well as RG.
+            # if this causes problems with FT8/WSPR (i.e., RG config change while FT8/WSPR running,
+            # the single channel send_confif routine can be called here instead.
             pageStatus = "Setup saved."
         else:
             pageStatus = pageStatus + " NOT SAVED"

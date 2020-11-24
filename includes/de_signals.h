@@ -13,7 +13,7 @@ Maps program mnemonics to 2-byte commands to be passed to DE
 #define CONFIG_CHANNELS     "CH"  // gives DE channel configurations
 #define UNDEFINE_CHANNEL    "UC"  // asks DE to drop its set of data channels
 #define FIREHOSE_SERVER     "FH"  // puts DE into firehose-L mode (for Channel 0)
-#define STOP_FIREHOSE       "FX"  // takes DR out of firehose-L mode
+#define STOP_FIREHOSE       "XF"  // takes DR out of firehose-L mode
 #define START_DATA_COLL     "SC"  // asks DE to start collecting data in ringbuffer mode
 #define STOP_DATA_COLL      "XC"  // asks DE to stop collecting data in ringbuffer mode
 #define LED_SET             "SB"  // in case we need to send a binary LED set byte
