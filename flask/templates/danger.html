@@ -77,6 +77,7 @@ fieldset {
       <p style="font-size: 14px; margin-left:20px;" >
       {{ form.loglevel.label }} &nbsp;
       {{ form.loglevel  }}<br>
+      Send drf detail to terminal {{ form.drf_out }}<br>
       <b> Digital RF Settings</b><br>
          Subdirectory Cadence (secs.) <input type = "text" name = "subdircadence" value = {{ subdircadence }} />&nbsp;(numeric) <br>
          DRF compression<input type = "text" name = "drfcompression" value = {{ drfcompression }} /> <br>

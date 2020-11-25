@@ -25,6 +25,7 @@ class MainControlForm(FlaskForm):
   startprop = SubmitField("Start Monitoring")
   stopprop  = SubmitField("Stop Monitoring")
   gpsdo =     BooleanField('GPSDO',default=True)
+  drf_out =   BooleanField('drf_output',default=False)
 
 class ChannelForm(Form):
   channel_ant = SelectField('AntennaPort',choices = [('0','0'),('1','1')])

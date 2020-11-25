@@ -112,7 +112,7 @@ UNLINK            = "UL"
 HALT_DE           = "XX"
 
 log_NONE     = 0
-log_ERRORS   = 1
+log_ERROR    = 1
 log_WARNINGS = 2
 log_NOTICE   = 3
 log_INFO     = 4
@@ -133,7 +133,7 @@ def log(message, priority):
 
     if (int(priority) <= loglevel):
         os.system("logger -s -p user." + log_severity[priority] + " app.py: " +
-                  message)
+                  str(message))
     return
 
 
@@ -142,7 +142,7 @@ def is_numeric(s):
         float(s)
         return True
     except ValueError:
-        log("Numeric value error in is_numeric", log_ERRORS)
+        log("Numeric value error in is_numeric", log_ERROR)
         print("Value error")
         return False
 
@@ -174,7 +174,12 @@ def create_channel(channelNo, configPort, dataPort):
     LH_portA_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print("Channel ", channelNo, " Send CREATE_CHANNEL to DE: ", msg,
           " args = ", DE_IP_addr, DE_IP_portB)
-    DE_portB_socket.sendto(msg, (DE_IP_addr, DE_IP_portB))
+    try:
+      DE_portB_socket.sendto(msg, (DE_IP_addr, DE_IP_portB))
+    except Exception as e:
+      print("Port B not found")
+      log("Port B not found; DE down or disconnected", log_ERROR)
+      return
     LH_portA_socket.bind(('', LH_IP_portA))
     print("Awaiting reply on port", LH_IP_portA)
     # log("Awaiting reply on port " + str(LH_IP_portA), log_DEBUG )
@@ -600,9 +605,17 @@ def sdr():
                     print("Update properties file at ", metadataPath)
                     log("Try to update properties file", log_INFO)
                     f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
-                    f5.attrs.__setitem__('subchannel_frequencies_MHz', chf)
-                    f5.attrs.__setitem__('data_source', "TangerineSDR")
-                    f5.attrs.__setitem__('antenna_ports', ant)
+                    f5.attrs.__setitem__('Subchannel_frequencies_MHz', chf)
+                    f5.attrs.__setitem__('Data_source', "TangerineSDR")
+                    f5.attrs.__setitem__('Antenna_ports', ant)
+                    f5.attrs.__setitem__('Callsign',parser['profile']['callsign'])
+                    f5.attrs.__setitem__('Grid',parser['profile']['grid'])
+                    f5.attrs.__setitem__('Latitude',parser['profile']['latitude'])
+                    f5.attrs.__setitem__('Longitude',parser['profile']['longitude'])
+                    f5.attrs.__setitem__('Antenna0',parser['profile']['antenna0'])
+                    f5.attrs.__setitem__('Antenna1',parser['profile']['antenna1'])
+                    f5.attrs.__setitem__('GPSDO',parser['profile']['gpsdo'])
+                    f5.attrs.__setitem__('Elevation_meters',parser['profile']['elevation'])
                     f5.close()
                 except Exception as e:
                     print(e)
@@ -744,13 +757,21 @@ def restart():
         statusmain = 1
     except Exception as e:
         print(e)
+        log(e, log_ERROR)
         theStatus = "F: DE_portB_socket, Exception " + str(e)
-
 
 #
     print("List of DE configuration ports:", DE_IP_portC)
     log("DE configuration port", log_DEBUG)
-    log(DE_IP_portC[0], log_DEBUG)
+    try:
+      log(DE_IP_portC[0], log_DEBUG)
+    except Exception as e:
+      print(e)
+      log("Did not find DE_IP_portC, DE down or disconnected",log_ERROR)
+      form = MainControlForm()
+      form.destatus = "ERROR - DE down or disconnected"
+      return render_template('tangerine.html', form=form)
+      
     send_configuration()
 
     # ringbuffer setup
@@ -777,7 +798,10 @@ def restart():
     # halt any previously started ringbuffer task(s)
     rcmd = 'killall -9 drf'
     returned_value = os.system(rcmd)
-    rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' &'
+    if(parser['settings']['drf_output'] == "On"):
+        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' &'
+    else: # the DangerZone setting for this is Off; discard output from drf ringbuffer log
+        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' >/dev/null &'
     # spin off this process asynchornously (notice the & at the end)
     returned_value = os.system(rcmd)
     print("F: ringbuffer control activated")
@@ -918,6 +942,10 @@ def danger():
         print("subdircadence = " + result.get('subdircadence'))
         t = result.get('subdircadence')
         parser.set('settings', 'loglevel', form.loglevel.data)
+        if(form.drf_out.data == True):
+            parser.set('settings','drf_output',"On")
+        else:
+            parser.set('settings','drf_output',"Off")
         print("t = ", t, type(t), t.isnumeric())
         if t.isnumeric() == False:
             pageStatus = pageStatus + "Subdirectory cadence not numeric. "
@@ -1012,6 +1040,10 @@ def danger():
     dataport1 = parser['settings']['dataport1']
     dataport2 = parser['settings']['dataport2']
     form.loglevel.data = parser['settings']['loglevel']
+    if(parser['settings']['drf_output'] == "On"):
+        form.drf_out.data = True
+    else:
+        form.drf_out.data = False
 
     return render_template('danger.html',
                            form=form,
