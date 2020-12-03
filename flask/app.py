@@ -439,6 +439,14 @@ def sdr():
         print("restart button -", form.restartDE.data)
         log("Main control POST ", log_INFO)
         result = request.form
+        
+        if result.get('csubmit') == "Save":
+            if(statusRG or statusSnap or statusFHR):
+                print("F: error - user tried to change data acquisition type while collecting data")
+                form.errline = "You must stop data acquisition before changing anything here."
+                form.dataStat = "* * ERROR * * See below."
+                return render_template('tangerine.html', form=form)
+                
 
         if (form.restartDE.data):
             # TODO: here, add code to stop all activities & reflect that in config
@@ -527,6 +535,17 @@ def sdr():
         if (form.startDC.data):  # User clicked button to start data acquisition
             log("User clicked button to start data acquisition",
                 log_NOTICE)
+            if(statusRG or statusSnap or statusFHR):
+                theDataStatus = ""
+                if(statusRG):
+                    theDataStatus = "Ringbuffer data collection already active"
+                if(statusSnap):
+                    theDataStatus= theStatus + "Snapshotter data collection already active"
+                if(statusFHR):
+                    theDataStatus = theStatus + "Firehose-R data collection already active"
+                form.destatus = theStatus
+                form.dataStat = theDataStatus
+                return render_template('tangerine.html', form=form)
             if (len(parser['settings']['firehoser_path']) < 1
                     and form.mode.data == 'firehoseR'):
                 print("F: configured temp firehose path='",
@@ -552,6 +571,19 @@ def sdr():
                       # command to start data acquisition to local fast server
                   #  send_to_DE(0, START_DATA_COLL + " 0")
                     
+                if(parser['settings']['ringbuffer_mode'] == "On"):    # start data acq with ringbuffer
+                    ringbufferPath = parser['settings']['ringbuffer_path']
+                    ringbufferMaxSize = parser['settings']['ringbuf_maxsize']
+                    log("Starting drf ringbuffer control", log_NOTICE)
+                    # halt any previously started ringbuffer task(s)
+                    rcmd = 'killall -9 drf'
+                    returned_value = os.system(rcmd)
+                    if(parser['settings']['drf_output'] == "On"): # the -l = max channel duration in secs
+                        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' &'
+                    else: # the DangerZone setting for this is Off; discard output from drf ringbuffer log
+                        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' >/dev/null &'
+                    returned_value = os.system(rcmd) # start drf ringbuffer control
+                    # spin off this process asynchornously (notice the & at the end)
 
                 # User wants to start data collection. Is there an existing drf_properties file?
                 # If so, we delete it so that system will build a new one reflecting
@@ -626,11 +658,16 @@ def sdr():
 
         if (form.stopDC.data):
             send_to_DE(0, STOP_DATA_COLL + " 0")
-            log("User clicked button to stop ringbuffer data collection",
+            log("User clicked button to stop data collection",
                 log_NOTICE)
             returned_value = os.system("killall -9 rgrcvr")
             log("rgrcvr killed", log_INFO)
             print("F: after kill of rgrcvr, retcode=", returned_value)
+            if(parser['settings']['ringbuffer_mode'] == "On"):    # start data acq with ringbuffer
+                log("Stopping drf ringbuffer control", log_NOTICE)
+                    # halt any previously started ringbuffer task(s)
+                rcmd = 'killall -9 drf'
+                returned_value = os.system(rcmd)
             fhmode = parser['settings']['firehoser_mode']
             fhdirectory = parser['settings']['firehoser_path']
             fhtemp = parser['settings']['temp_path']
@@ -776,7 +813,7 @@ def restart():
 
     # ringbuffer setup
     ringbufferPath = parser['settings']['ringbuffer_path']
-    ringbufferMaxSize = parser['settings']['ringbuf_maxsize']
+#    ringbufferMaxSize = parser['settings']['ringbuf_maxsize']
     # create any missing directories
     log("Creating any missing directories", log_DEBUG)
     rcmd = "mkdir " + ringbufferPath
@@ -794,17 +831,19 @@ def restart():
     rcmd = "mkdir " + parser['settings']['ramdisk_path'] + "/WSPR"
     os.system(rcmd)
 
-    log("Restarting drf ringbuffer control", log_NOTICE)
+# Old drf startup method deprecated. 
+# Now, drf ringbuffer control activated only upon start of data collection
+#    log("Restarting drf ringbuffer control", log_NOTICE)
     # halt any previously started ringbuffer task(s)
-    rcmd = 'killall -9 drf'
-    returned_value = os.system(rcmd)
-    if(parser['settings']['drf_output'] == "On"):
-        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' &'
-    else: # the DangerZone setting for this is Off; discard output from drf ringbuffer log
-        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' >/dev/null &'
+#    rcmd = 'killall -9 drf'
+#    returned_value = os.system(rcmd)
+#    if(parser['settings']['drf_output'] == "On"): # the -l = max channel duration in secs
+#        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' &'
+#    else: # the DangerZone setting for this is Off; discard output from drf ringbuffer log
+#        rcmd = 'drf ringbuffer -z ' + ringbufferMaxSize + ' -p 120 -v ' + ringbufferPath + ' >/dev/null &'
     # spin off this process asynchornously (notice the & at the end)
-    returned_value = os.system(rcmd)
-    print("F: ringbuffer control activated")
+#    returned_value = os.system(rcmd)
+#    print("F: ringbuffer control activated")
     # start heartbeat thread that pings Central Control
     # threadname = "HB"
     _thread.start_new_thread(heartbeat_thread, (
@@ -840,6 +879,8 @@ def cleanup(inputstring):
     inputstring = inputstring.replace('"', '')
     inputstring = inputstring.replace("'", "")
     inputstring = inputstring.replace(" ", "_")
+    if(len(inputstring) > 64):
+      inputstring = inputstring[0:63] # limited to 64 bytes due to PSKReporter data feed
     print("cleaned input string='" + inputstring + "'")
     return (inputstring)
 

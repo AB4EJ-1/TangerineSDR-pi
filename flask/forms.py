@@ -39,7 +39,7 @@ class ChannelControlForm(FlaskForm):
           ('4','4'),('5','5'),('6','6'),('7','7'),('8','8'),('9','9'),('10','10'),('11','11'),
           ('12','12'),('13','13'),('14','14'),('15','15'),('`16','16')])
   maxRingbufsize = SelectField('RingbufMax',choices=[('1MB','1MB'),('10MB','10MB'),('50MB','50MB'),
-          ('100MB','100MB'),('500MB','500MB'),('1GB','1GB'),('10GB','10GB'),('50GB','50GB'),
+          ('100MB','100MB'),('500MB','500MB'),('1GB','1GB'),('10GB','10GB'),('15GB','15GB'),('50GB','50GB'),
           ('100GB','100GB'),('500GB','500GB'),('1TB','1TB'),('2TB','2TB'),('4TB','4TB')])
   channelrate = SelectField(u'Rate', coerce=int)
 # temporary setup for flex form
