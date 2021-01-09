@@ -630,9 +630,21 @@ def sdr():
                     ant.append(int(parser['channels']['p' + str(i)]))
                     chf.append(float(parser['channels']['f' + str(i)]))
                 print("Record list of subchannels=", chf)
+                
+                for i in range(5): # try up to 5 times to get properties file (race condition)
+                   print("Try to open properties file")
+                   try:
+                     f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
+                     print("Properties file found")
+                     log("Properties file opened", log_INFO)
+                     break                  
+                   except Exception as e:
+                     print(e)
+                     log("Could not open properties file", log_ERROR)
+                     time.sleep(1)
 
                 try:
-                    time.sleep(2)  #wait for properties file to be created
+                  #  time.sleep(2)  #wait for properties file to be created
                     #     metadataPath = parser['settings']['ringbuffer_path'] + "/" + subdir
                     print("Update properties file at ", metadataPath)
                     log("Try to update properties file", log_INFO)
@@ -1126,6 +1138,7 @@ def desetup():
     result = request.form
 
     if request.method == 'GET' or result.get('csubmit') == "Discard Changes":
+        log("desetup GET", log_DEBUG)
         channellistform = ChannelListForm()
         # populate channel settings from config file
         channelcount = parser['channels']['numChannels']
@@ -1370,7 +1383,10 @@ def uploading():
     loglevel = int(parser['settings']['loglevel'])
     log("/uploading", log_NOTICE)
     if request.method == 'GET' or result.get('csubmit') == "Discard Changes":
-
+        if (parser['settings']['gnu_output'] == "On"):
+            form.gnu_out.data = True
+        else:
+            form.gnu_out.data = False
         form.throttle.data = parser['settings']['throttle']
         centralURL = parser['settings']['central_host']
         centralPort = parser['settings']['central_port']
@@ -1395,6 +1411,10 @@ def uploading():
         if result.get('firehoseL_port').isnumeric() == False:
             pageStatus = "FirehoseL port setting must be numeric. "
             statusCheck = False
+        if form.gnu_out.data == True:
+            parser.set('settings', 'gnu_output', "On")
+        else:
+            parser.set('settings', 'gnu_output', "Off")
             
         try:
             socket.inet_aton(result.get('firehoseL_IP'))
@@ -1439,7 +1459,7 @@ def callsign():
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     loglevel = int(parser['settings']['loglevel'])
-    log("/callsign", log_NOTICE)
+    log("/callsign", log_DEBUG)
     pageStatus = "Changes do not take effect until you click Save."
     if request.method == 'GET':
         c0 = parser['monitor']['c0']
@@ -1551,7 +1571,7 @@ def notification():
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     loglevel = int(parser['settings']['loglevel'])
-    log("/notification page", log_NOTICE)
+    log("/notification page", log_DEBUG)
     theStatus = ""
     if request.method == 'GET':
         print("F: smtpsvr = ", parser['email']['smtpsvr'])
@@ -1895,6 +1915,7 @@ def ft8list():
     ft8string = ""
     band = []
     # print("Entering _/ft8list")
+    log("_ft8list", log_DEBUG)
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     for i in range(7):
@@ -1946,7 +1967,7 @@ def ft8list():
 
 @app.route('/_wsprlist')
 def wsprlist():
-    #  print("wsprlist")
+    log("_wsprlist", log_DEBUG)
     wsprstring = ""
     band = []
     chnl = []
@@ -2019,6 +2040,7 @@ def restore():
 ######################################################################
 @app.errorhandler(404)
 def page_not_found(e):
+    log("error handler: page not found", log_DEBUG)
     return render_template("notfound.html")
 
 

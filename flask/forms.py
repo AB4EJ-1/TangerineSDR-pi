@@ -115,6 +115,7 @@ class ChannelControlForm(FlaskForm):
   ch15b = DecimalField('CH 15 bw',[validators.Optional(),validators.NumberRange(min=0.001, max = 1000, message=(u'Bandwidth out of range'))])
   
 class ThrottleControlForm(FlaskForm):
+  gnu_out =   BooleanField('gnu_output',default=False)
   throttle = SelectField('Bandwidth (bits/sec)', choices =
     [('Unlimited', 'Unlimited'),
      ('10000',  '10k'),

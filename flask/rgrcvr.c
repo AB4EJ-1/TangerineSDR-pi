@@ -62,6 +62,8 @@ extern int  openConfigFile();
 #define SUBDIR_CADENCE 10
 #define MILLISECS_PER_FILE 1000
 
+#define SA struct sockaddr
+
 
 ///////////////// Digital RF / HDF5 //////////////////////////////////////
 // Based on research with old_protocol_N1.c in pihpsdr-master
@@ -111,6 +113,8 @@ static char hdf5subdirectory[16];
 static long packetCount;
 static int recv_port_status = 0;
 static int recv_port_status_ft8 = 0;
+static char logmsg[300] = "";
+static char sys_command[200];
 
 ///////////////////////// FFT //////////////////////////////////////
 #define FFT_N 1048576
@@ -177,6 +181,8 @@ static char data_path[100];
 static char temp_path[100];
 static char the_node[20];
 static char the_grid[20];
+
+static int gnu_output_mode = 0;
 
 ////////////////  FFT Analyze ///////////////////////////////////
 // This will be called as a thread for each subchannel when enough samples
@@ -409,7 +415,7 @@ void* firehose_uploader(void *threadid) {
   char the_host[50] = "";
   char the_token[100] = "";
   char sys_command[200];
-  char logmsg[300] = "";
+  
   printf("RG: firehoseR uploader thread starting\n");
   num_items = rconfig("node",configresult,0);
   if(num_items == 0)
@@ -577,12 +583,27 @@ int main() {
         printf("RG:  CONFIG RESULT = '%s'\n",configresult);
         strcpy(ringbuffer_path, configresult);
         }
-   
-      }
-    else
-      {
-      ringbufferMode = 0;
-      }
+      num_items = rconfig("gnu_output",configresult,0);
+      if(num_items == 0)
+         {
+         printf("RG: ERROR - gnu_output setting not found in config.ini");
+         }    
+      else
+         {
+         printf("RG: CONFIG RESULT = '%s'\n",configresult);
+         
+         if ( memcmp(&configresult,"On",2) == 0)
+           {
+           gnu_output_mode = 1;
+           sprintf(logmsg,"logger -s -p user.info rgrcvr: gnuradio output activated %s",sys_command);
+           int r = system(logmsg);
+           }
+         else
+           {
+            gnu_output_mode = 0;
+           }
+         }
+       }
     }
 
   // Is snapshotter mode set to "On" in config?
@@ -740,6 +761,52 @@ int main() {
   buffers_received = 0; // initialize this
   printf("RG: ringbufferMode=%i, snapshotterMode=%i,firehoseRMode=%i\n",
     ringbufferMode,snapshotterMode,firehoseRMode);
+    
+  // temporary setup for sending UDP stream data to GNUradio
+  int sockfd, connfd;
+  struct sockaddr_in servaddr, cli;
+  char tcpBUFF[8200];
+  bzero(tcpBUFF, sizeof(tcpBUFF));
+  sockfd = socket(AF_INET, SOCK_DGRAM,0);
+  bzero(&servaddr, sizeof(servaddr));
+  servaddr.sin_family = AF_INET;
+  
+  num_items = rconfig("firehosel_host_ip",configresult,0);
+  if(num_items == 0)
+        {
+        printf("RG: ERROR - firehosel_host_ip setting not found in config.ini");
+        }
+  else
+        {
+        printf("RG:  CONFIG RESULT = '%s'\n",configresult);
+        servaddr.sin_addr.s_addr = inet_addr(configresult);
+        sprintf(logmsg,"logger -s -p user.info rgrcvr: firehose_l target set to %s %s",configresult,sys_command);
+        int r = system(logmsg);
+        }
+        
+  num_items = rconfig("firehosel_host_port",configresult,0);
+  if(num_items == 0)
+        {
+        printf("RG: ERROR - firehosel_host_port setting not found in config.ini");
+        }
+  else
+        {
+        printf("RG:  CONFIG RESULT = '%s'\n",configresult);
+        int servport = atoi(configresult);
+        servaddr.sin_port = htons(servport);
+        }
+  
+  
+  
+ // servaddr.sin_addr.s_addr = inet_addr("192.168.1.77");  // VMWare
+//  servaddr.sin_addr.s_addr = inet_addr("192.168.1.78");  // this system
+ // servaddr.sin_port = htons(9998);
+  if(connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0)
+    {
+    printf("\nRG: Could not connect to GNUradio server\n\n");
+    }
+  else
+    printf("\nRG: GNUradio connected!  bufsize = %i\n\n",sizeof(myDataBuf.theDataSample));
 
 while(1)
  {
@@ -906,6 +973,13 @@ while(1)
     if(DRFdata_object != NULL)  // make sure there is an open DRF file
 	  {
       result = digital_rf_write_hdf5(DRFdata_object, vector_sum, myDataBuf.theDataSample,sampleCount) ;
+      if (gnu_output_mode)
+        {
+        int n = sendto(sockfd, (const char*)myDataBuf.theDataSample, sizeof(myDataBuf.theDataSample), MSG_CONFIRM,
+            (const struct sockaddr *) &servaddr, sizeof(servaddr));
+           // printf("sendto returned %i\n",n);
+        }
+      
 	//  fprintf(stderr,"DRF write result = %d, vector_sum = %ld \n",result, vector_sum);
 	  }
     hdf_i++;  // increment count of hdf buffers processed

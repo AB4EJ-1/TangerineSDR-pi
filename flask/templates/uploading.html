@@ -134,7 +134,8 @@ document.getElementById("dt").innerHTML = d.toUTCString()
 			<span class="tooltiptext">IP address of high-speed server on your LAN for receiving wide-bandwidth data</span></div>  <input type="text" name="firehoseL_IP"
 			   value= {{ firehoseL_host }} /><br>
 			Local Firehose port <input type="text" name="firehoseL_port"
-			   value = {{ firehoseL_port }} />
+			   value = {{ firehoseL_port }} /><br>
+			{{ form.gnu_out }} Send UDP data to GNUradio (not available in Firehose-L mode)
 			</div>
 		</fieldset>
     </form>
