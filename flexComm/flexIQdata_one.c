@@ -32,7 +32,6 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include "de_signals.h"
 
 #define FLEXRADIO_IP "192.168.1.66"
 #define FLEX_DISCOVERY_PORT 4992
@@ -56,7 +55,6 @@ typedef struct flexDataBuf
  struct flexDataSample flexDatSample[512];
  } FLEXBUF;
 
-static struct dataBuf tdataBuf;
 static struct sockaddr_in flex_tcp_addr;
 static struct sockaddr_in flex_udp_addr;
 static int sock, tcpsock;  // sockets

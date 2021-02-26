@@ -18,6 +18,7 @@
 #include <string.h>
 #include "de_signals.h"
 #include <unistd.h>
+#include <sys/time.h>
 
 // following should be the IP address of computer running Gnuradio
 #define DESTINATION "192.168.1.207"
@@ -45,6 +46,12 @@ typedef struct flexDataBuf
  struct flexDataSample flexDatSample[512];
  } FLEXBUF;
 
+uint64_t GetTimeStamp() {
+  struct timeval tv;
+  gettimeofday(&tv,NULL);
+  return tv.tv_sec*(uint64_t)1000000+tv.tv_usec;
+
+}
 
 int main() {
 
@@ -108,7 +115,7 @@ while(1)
     exit(-1);
     }
     
-  printf("received %i bytes, try to resend - ",recv_len);
+  printf("time %li,received %i bytes, try to resend - ",GetTimeStamp(),recv_len);
   int n = sendto(sockfd, (const char*)myDataBuf.flexDatSample, sizeof(myDataBuf.flexDatSample), MSG_CONFIRM,
             (const struct sockaddr *) &servaddr, sizeof(servaddr));
   printf(" bytes sent = %i \n",n);
