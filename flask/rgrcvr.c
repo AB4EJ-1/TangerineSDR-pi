@@ -64,7 +64,6 @@ extern int  openConfigFile();
 
 #define SA struct sockaddr
 
-
 ///////////////// Digital RF / HDF5 //////////////////////////////////////
 // Based on research with old_protocol_N1.c in pihpsdr-master
 static	Digital_rf_write_object * DRFdata_object = NULL; /* main object created by init */
