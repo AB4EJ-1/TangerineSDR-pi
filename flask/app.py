@@ -60,6 +60,7 @@ from flask_wtf import CSRFProtect
 
 from pyhamtools import locator
 import requests
+from requests.structures import CaseInsensitiveDict
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'here-is-your-secret-key-ghost-rider'
@@ -314,7 +315,8 @@ def send_configuration():
 # Also looks for a Data Request response from Central, indicating that some part of ringbuffer
 # is to be uploaded.
 def heartbeat_thread(threadname, a):
-    log("Starting heartbeat thread", log_INFO)
+    log("Heartbeat thread starting...", log_INFO)
+    print("Staring heartbeat thread")
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     central_host = parser['settings']['central_host']
@@ -328,7 +330,18 @@ def heartbeat_thread(threadname, a):
     throttle = parser['settings']['throttle']
     DR_pending = parser['settings']['dr_pending']
     print("DR # pending=", DR_pending)
-    URL = "http://" + central_host + ":" + central_port + "/apikey/" + theToken
+    h = {    # this is to be station name, node#, and token
+        "nickname":"Station1",
+        "station_id":"N000001",
+        "station_pass":"password"
+        }
+    headers = CaseInsensitiveDict()
+    headers["Accept"] = "application/json"
+    headers["Content-Type"] = "application/json"
+    upldat = json.dumps(h)
+    
+    
+    URL = "http://" + central_host + ":" + central_port + "/heartbeat/"
     PARAMS = "node=" + theNode
     log("Heartbeat URL: " + URL, log_DEBUG)
     session = requests.Session()
@@ -336,12 +349,14 @@ def heartbeat_thread(threadname, a):
         print("  V V V V V     HB thread    V V V V V")
         log("Send heartbeat to Central Control", log_INFO)
         print("send: '" + URL + "'")
-        r = session.get(url=URL, params=PARAMS)
-        print("HB response:", r.text)
+     #   r = session.get(url=URL, params=PARAMS)
+        r = requests.put(URL,headers=headers,data=upldat)
+        print("HB response:"  + str(r) + "text=" + r.text)
         log("Heartbeat response: " + r.text, log_NOTICE)
-        response = r.text.split()
+      #  response = r.text.split()
         # in a Data Request, we expect:   DR  (Data Request#) (Start datteime) (End datetime)
-        if (response[0] == "DR"):
+   #     if (response[0] == "DR"):
+        if (len(r.text) > 0):
             print("Data request#", response[1],
                   " received from Central, START=", response[2], " END=",
                   response[3])
@@ -383,6 +398,9 @@ def heartbeat_thread(threadname, a):
             log("Upload command: " + command, log_INFO)
             print("Starting upload...")
             os.system(command)
+        else:
+            print("HB: null response from Central")
+        # if no text returned from server, sleep for heartbeat interval
         time.sleep(heartbeat_interval)
     return
 
@@ -781,6 +799,14 @@ def restart():
     log(" - - - Restarting - - -", log_NOTICE)
     DE_IP_portC = []
     LH_IP_portF = []
+    
+    # temporary disable for debugging
+ #   _thread.start_new_thread(heartbeat_thread, (
+ #       0,
+ #       0,
+ #   ))
+    
+    
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     print("F: restart; run discovery")
@@ -858,10 +884,7 @@ def restart():
 #    print("F: ringbuffer control activated")
     # start heartbeat thread that pings Central Control
     # threadname = "HB"
-    _thread.start_new_thread(heartbeat_thread, (
-        0,
-        0,
-    ))
+
 
     return redirect('/')
 
