@@ -196,7 +196,6 @@ def create_channel(channelNo, configPort, dataPort):
     LH_portA_socket.close()
     return
 
-
 def discover_DE():  # Here we call the UDPdiscover C routine to find first Tangerine on network
     global DE_IP_addr, DE_IP_portB, LH_IP_portA
     # Access the shared library (i.e., *.so)
