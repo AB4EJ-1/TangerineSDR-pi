@@ -332,7 +332,7 @@ def heartbeat_thread(threadname, a):
     h = {    # this is to be station name, node#, and token
         "nickname":"Station1",
         "station_id":"N000001",
-        "station_pass":"password"
+        "station_pass":"qW34Tee!"
         }
     headers = CaseInsensitiveDict()
     headers["Accept"] = "application/json"
@@ -352,10 +352,14 @@ def heartbeat_thread(threadname, a):
         r = requests.put(URL,headers=headers,data=upldat)
         print("HB response:"  + str(r) + "text=" + r.text)
         log("Heartbeat response: " + r.text, log_NOTICE)
-      #  response = r.text.split()
+
         # in a Data Request, we expect:   DR  (Data Request#) (Start datteime) (End datetime)
    #     if (response[0] == "DR"):
         if (len(r.text) > 0):
+            r1 = json.loads(r.text)
+            print("DATA REQUEST ID",r1['requestID'])
+            print("START: ",r1['timestart'])
+            print("STOP:",r1['timestart'])
             print("Data request#", response[1],
                   " received from Central, START=", response[2], " END=",
                   response[3])
@@ -799,11 +803,11 @@ def restart():
     DE_IP_portC = []
     LH_IP_portF = []
     
-    # temporary disable for debugging
- #   _thread.start_new_thread(heartbeat_thread, (
- #       0,
- #       0,
- #   ))
+    
+    _thread.start_new_thread(heartbeat_thread, (
+        0,
+        0,
+        ))
     
     
     parser = configparser.ConfigParser(allow_no_value=True)
