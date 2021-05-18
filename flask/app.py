@@ -331,13 +331,13 @@ def heartbeat_thread(threadname, a):
     print("DR # pending=", DR_pending)
     h = {    # this is to be station name, node#, and token
         "nickname":"Station1",
-        "station_id":"N000001",
-        "station_pass":"qW34Tee!"
+        "station_id":theNode,
+        "station_pass":theToken
         }
     headers = CaseInsensitiveDict()
     headers["Accept"] = "application/json"
     headers["Content-Type"] = "application/json"
-    upldat = json.dumps(h)
+    upldat = json.dumps(h) # put station credentials into the JSON data packet
     
     
     URL = "http://" + central_host + ":" + central_port + "/heartbeat/"
@@ -359,31 +359,30 @@ def heartbeat_thread(threadname, a):
             r1 = json.loads(r.text)
             print("DATA REQUEST ID",r1['requestID'])
             print("START: ",r1['timestart'])
-            print("STOP:",r1['timestart'])
-            print("Data request#", response[1],
-                  " received from Central, START=", response[2], " END=",
-                  response[3])
+            uploadstart = r1['timestart']
+            print("STOP:",r1['timestop'])
+            uploadend = r1['timestop']
             print("DR pending = '" + DR_pending + "'")
             if (
-                    int(DR_pending) == int(response[1])
+                    int(DR_pending) == int(r1['requestID'])
             ):  # we have already started (or completed) processing this one
-                print("DR# ", response[1],
+                print("DR# ", r1['requestID'],
                       " already processed; ignoring duplicate request")
                 time.sleep(heartbeat_interval)
                 continue
             else:  # keep track of most recently handled Data Request no.
-                DRstatus = "Data request# " + response[
-                    1] + " received from Central, START=" + response[
-                        2] + " END=" + response[3]
+                DRstatus = "Data request# " + str(r1['requestID']) \
+                     + " received from Central, START=" + uploadstart + \
+                     " END=" + uploadend
                 log(DRstatus, log_INFO)
-                requestNo = response[1]
+                requestNo = str(r1['requestID'])
                 command = 'logger "' + DRstatus + '"'
                 os.system(command)
                 parser.set('settings', 'dr_pending', requestNo)
                 fp = open('config.ini', 'w')
                 parser.write(fp)
                 fp.close()
-            command = "drf ls " + ringbuffer_path + " -r -s " + response[2] + " -e " + response[3] + \
+            command = "drf ls " + ringbuffer_path + " -r -s " + uploadstart + " -e " + uploadend + \
               " > " + RAMdisk_path + "/dataFileList"
             print("Ringbuffer content check command = ", command)
             log("drf command: " + command, log_INFO)
@@ -396,11 +395,12 @@ def heartbeat_thread(threadname, a):
             log("filecompress : " + command, log_INFO)
             print("compress command: ", command)
             os.system(command)
-            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + theNode + "/sftp-test;exit' -u " + theNode + ",odroid " + "sftp://" + central_host
+            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;exit' -u " + theNode + "," + theToken + " sftp://" + central_host
             print("Upload command = '" + command + "'")
-            log("Upload command: " + command, log_INFO)
+            log("Uploading, Node = " + theNode + " token = " + theToken, log_INFO)
             print("Starting upload...")
             os.system(command)
+            log("Upload command processing completed", log_INFO)
         else:
             print("HB: null response from Central")
         # if no text returned from server, sleep for heartbeat interval
@@ -1941,7 +1941,7 @@ def ft8list():
     ft8string = ""
     band = []
     # print("Entering _/ft8list")
-    log("_ft8list", log_DEBUG)
+  #  log("_ft8list", log_DEBUG)
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     for i in range(7):
@@ -1993,7 +1993,7 @@ def ft8list():
 
 @app.route('/_wsprlist')
 def wsprlist():
-    log("_wsprlist", log_DEBUG)
+  #  log("_wsprlist", log_DEBUG)
     wsprstring = ""
     band = []
     chnl = []
