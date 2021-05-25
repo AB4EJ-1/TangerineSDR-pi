@@ -395,7 +395,7 @@ def heartbeat_thread(threadname, a):
             log("filecompress : " + command, log_INFO)
             print("compress command: ", command)
             os.system(command)
-            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;exit' -u " + theNode + "," + theToken + " sftp://" + central_host
+            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;mkdir d1;exit' -u " + theNode + "," + theToken + " sftp://" + central_host
             print("Upload command = '" + command + "'")
             log("Uploading, Node = " + theNode + " token = " + theToken, log_INFO)
             print("Starting upload...")
@@ -1478,6 +1478,32 @@ def uploading():
                            form           = form,
                            status         = pageStatus)
 
+@app.route("/magnet", methods=['POST', 'GET'])
+def magnet():
+    print("REACHED /magnet")
+    global theStatus, theDataStatus
+    form = MainControlForm()
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read('config.ini')
+    loglevel = int(parser['settings']['loglevel'])
+    log("/magnet", log_DEBUG)
+    theStatus = "Starting magnetometer"
+    if request.method == 'GET':
+            return render_template('magnet.html',
+                               status=theStatus,
+                               form = form)
+                               
+@app.route("/magnet/data", methods=['POST','GET'])
+def get_mag():
+    print("Reached magnet data")
+    if request.method == 'POST':
+      print("get_mag POST recd")
+      return 'OK', 200
+    else:
+      currentDT = datetime.now()
+      
+      return str(currentDT)
+
 @app.route("/callsign", methods=['POST', 'GET'])
 def callsign():
     global theStatus, theDataStatus
@@ -1589,6 +1615,9 @@ def callsign():
                                c3=c3,
                                c4=c4,
                                c5=c5)
+
+
+      
 
 
 @app.route("/notification", methods=['POST', 'GET'])
@@ -1826,6 +1855,8 @@ def propagation():
         else:
             form.pskindicator.data = False
         return render_template('ft8setup.html', form=form)
+
+
 
 
 # configure WSPR settings
