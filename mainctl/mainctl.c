@@ -31,7 +31,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <unistd.h>
-#include <json.h>
+//#include <json.h>
 #include <pthread.h>
 #include <time.h>
 #include <complex.h>
@@ -41,6 +41,8 @@
 #include "CUnit/CUnit.h"
 #include "CUnit/Basic.h"
 #include <assert.h>
+#include <netdb.h>
+#include <sys/time.h>
 #include "discovered.h"
 #include "de_signals.h"
 
@@ -120,87 +122,11 @@ static char the_node[20];
 static int dataRatesReceived = 0;
 static int DE_OK = 0;
 
+extern char rconfig(char * arg, char * result, int testThis);
+extern int  openConfigFile();
+
 
 //// *********************** Start of Code  *******************************//////
-
-/////////////////////////////////////////////////////////////////////////////
-/////// function to read config items from the (python) config file /////////
-int rconfig(char * arg, char * result, int testThis) {
-const char delimiters[] = " =";
-printf("start fcn looking for %s\n", arg);
-FILE *fp;
-char *line = NULL;
-size_t len = 0;
-ssize_t read;
-char *token, *cp;
-if (testThis)
-  {
-  fp = fopen( "/home/odroid/projects/TangerineSDR-notes/flask/config.ini", "r");
-  }
-else
-  fp = fopen(configPath, "r");
-if (fp == NULL)
-  {
-  printf("ERROR - could not open config file at %s\n",configPath);
-  printf("ABEND 102");
-  exit(-1);
-  }
-//puts("read config");
-while ((read = getline(&line, &len, fp)) != -1) {
- // printf("line length %zu: ",read);
- // printf("%s \n",line);
-  cp = strdup(line);  // allocate enuff memory for a copy of this
-  //printf("cp=%s\n",cp);
-  token = strtok(cp, delimiters);
- // printf("first token='%s'\n",token);
-  if(strcmp(arg,token) == 0)
-   {
-  token = strtok(NULL, delimiters);
- // printf("second token=%s\n",token);
- // printf("config value found = '%s', length = %lu\n",token,strlen(token));
-  strncpy(result,token,strlen(token)-1);
-  result[strlen(token)-1] = 0x00;  // terminate the string
-  free(cp);
-  fclose(fp);
-  return(1);
-   }
-  }
-  free(cp);
-  fclose(fp);
-  return(0);
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////
-///////// Thread for uploading firehoseR data to Central Control //////////
-void firehose_uploader(void *threadid) {
-
-  char sys_command[200];
-  printf("firehoseR uploader thread starting\n");
-  sleep(20);
-  while(1)
-   {
-   if (firehoseUploadActive == 0)  // firehoseR upload halted
-     {
-     printf("------ FIREHOSE UPLOAD SHUTTING DOWN -------\n");
-     return;
-     }
-   printf("------FIREHOSE UPLOAD-----------\n");
-
-  sprintf(sys_command,"./firehose_xfer_auto.sh %s %s %s", data_path,temp_path,the_node);
-  printf("M: Uploader - executing command: %s \n",sys_command); 
-  int r = system(sys_command); 
-  printf("M: System command retcode=%i\n",r);
-
-   sleep(10);
-
-   }
-
-  return;
-}
-
-
 
 //////////////////////////////////////////////////////////////////////////
 //////////   Function to send command to DE //////////////////////////////
@@ -224,8 +150,6 @@ void sendCommandToDE(int channelNo, char command[2]) {
     LH_CONF_IN_port[channelNo] = atoi(configresult);
     } 
   printf("M: Port C now set to %i\n", LH_CONF_IN_port[channelNo] ); 
-
-
 
   printf("M: Prep to send command %s to DE, channel %i\n",command,channelNo);
   printf("M: Now, LH_CONF_IN_port[%i] = %i\n",channelNo,LH_CONF_IN_port[channelNo]);
@@ -283,7 +207,12 @@ void sendCommandToDE(int channelNo, char command[2]) {
         printf("s1 bind error\n");
       }
 
-    printf("M: sending %s\n",cmdBuf.cmd);
+
+    printf("M: now, channelNo = %i, DE_CONF_IN_port[channelNo] = %i\n",channelNo, DE_CONF_IN_port[channelNo]);
+    
+    si_DE.sin_port = htons(DE_CONF_IN_port[channelNo]);  // in case it was reset
+    printf("M: after assignment, si_DE.sin_port = %i\n",(int)ntohs(si_DE.sin_port));
+    printf("M: sending %s to port %d, addr %s\n",cmdBuf.cmd, (int)ntohs(si_DE.sin_port), inet_ntoa(si_DE.sin_addr));
     socklen_t sil = sizeof(si_DE);
 		//send the message
  //   if (sendto(s, &cmdBuf, sizeof(cmdBuf) , 0 , (struct sockaddr *) &si_DE, sizeof(si_DE)) <0 )
@@ -432,7 +361,6 @@ void *  processUserActions(void *threadid){
         // print buffer which contains the client contents 
         printf("M: Received %li bytes from client starting with %x %x\n", n, cmdBuf.cmd[0], cmdBuf.cmd[1]); 
 
-
         if (memcmp (cmdBuf.cmd, START_DATA_COLL, 2) == 0)
           {
           cmdBuf.channelNo = 0;  // this is for ringbuffer-type data
@@ -440,10 +368,12 @@ void *  processUserActions(void *threadid){
           char stoprgrcvr[50] = "killall -9 rgrcvr";
           printf("M: Issue command: %s\n",stoprgrcvr);
           int rcode = system(stoprgrcvr);
-          char startrgrcvr[50] = "./rgrcvr &";
+
+          char startrgrcvr[50] = "./mainctl/rgrcvr &";
           printf("M: Issue command: %s\n",startrgrcvr);
           rcode = system(startrgrcvr);
           }
+
         if (memcmp (cmdBuf.cmd, STOP_DATA_COLL, 2) == 0)
           {
           // stop rgrcvr
@@ -475,14 +405,17 @@ void *  processUserActions(void *threadid){
           strcpy(mkcommand,"killall -9 ft8rcvr");  // halt any existing instance(s)
           printf("M: issue command: %s\n",mkcommand);
           rt = system(mkcommand);
-          strcpy(mkcommand,"./ft8rcvr &");  // start instance of receiver
+          strcpy(mkcommand,"./mainctl/ft8rcvr &");  // start instance of receiver
           printf("M: issue command: %s\n",mkcommand);
           rt = system(mkcommand);
+          printf("M: retcode = %i\n",rt);
 
-
+         // The command to DE to start data collection for any mode is SC;
+         // The different modes are each associated with a specific channel.
           memcpy(&cmdBuf.cmd, "SC",2);
           cmdBuf.channelNo = 1;  // this is for FT8-type data
           }
+
         if (memcmp (cmdBuf.cmd, STOP_FT8_COLL, 2) == 0)
           {
           memcpy(&cmdBuf.cmd, "XC",2);
@@ -492,18 +425,46 @@ void *  processUserActions(void *threadid){
 
         if (memcmp (cmdBuf.cmd, START_WSPR_COLL, 2) == 0)
           {
+
+         
+          printf("M: process command to start WSPR rcvr\n");
+          char mkcommand[40] = "mkdir ";
+          strcat(mkcommand,pathToRAMdisk);
+          strcat(mkcommand,"/WSPR");
+
+          printf("M: issue command: %s\n",mkcommand);
+          int rt = system(mkcommand);
+          strcpy(mkcommand,"rm ");
+          strcat(mkcommand,pathToRAMdisk);
+          strcat(mkcommand,"/WSPR/*.*");
+
+          printf("M: issue command: %s\n",mkcommand);
+          rt = system(mkcommand);
+          strcpy(mkcommand,"killall -9 wsprrcvr");  // halt any existing instance(s)
+          printf("M: issue command: %s\n",mkcommand);
+          rt = system(mkcommand);
+          strcpy(mkcommand,"./mainctl/wsprrcvr &");  // start instance of receiver
+          printf("M: issue command: %s\n",mkcommand);
+          rt = system(mkcommand);
+          printf("M: retcode = %i\n",rt);
+
+         // The command to DE to start data collection for any mode is SC;
+         // The different modes are each associated with a specific channel.
+
           cmdBuf.channelNo = 2;  // this is for WSPR-type data
+          memcpy(&cmdBuf.cmd, "SC",2);
+
           }
 
-/*
-        if(n<4)
+        if (memcmp (cmdBuf.cmd, STOP_WSPR_COLL, 2) == 0)
           {
-          cmdBuf.channelNo = 0; // for testing with nc, zero out channelNo
+          char mkcommand[20] = "";
+          cmdBuf.channelNo = 2;  // this is for WSPR-type data
+          memcpy(&cmdBuf.cmd, "XC",2);
+          strcpy(mkcommand,"killall -9 wsprrcvr");  // halt any existing instance(s)
+          printf("M: issue command: %s\n",mkcommand);
+          int rt = system(mkcommand);
           }
-        printf("Command is: %s for channel# %i\n",cmdBuf.cmd,cmdBuf.channelNo);
-*/
-
-
 
 
         char commandToSend[2];
@@ -567,15 +528,19 @@ int prep_data_files(char *startDT, char *endDT, char *ringbuffer_path)
   printf("ringbuffer_path=%s\n",ringbuffer_path);
 // store the list of file names in the RAMdisk
   sprintf(fcommand,"drf ls %s -r -s %s -e %s > %s/dataFileList", ringbuffer_path, startDT, endDT, pathToRAMdisk);
-  printf(" ** drf fcommand1='%s'\n",fcommand);
+  printf("M: ** drf fcommand1='%s'\n",fcommand);
   int retcode = system(fcommand);  // execute the command
-  printf("drf return code=%i\n",retcode);
+  printf("M: drf return code=%i\n",retcode);
 // build arguments for a script that will tar the files, saving
 // the compressed (tar) file in same location as the ringbuffer
   int num_items = rconfig("node",theNode,0);
   num_items = rconfig("grid",theGrid,0);
+
+// add command here to mkdir directory upload_path in case it is not there
+// then, refer to that in the filecompress command
+
   strcpy(fn, (char *)buildFileName(theNode, theGrid));
-  sprintf(fcommand,"./filecompress.sh %s  %s/dataFileList %s ", ringbuffer_path, pathToRAMdisk, fn);
+  sprintf(fcommand,"./filecompress.sh %s  %s/dataFileList /media/usb0/uploadTemp/%s ", ringbuffer_path, pathToRAMdisk, fn);
   printf("** file compress command=%s\n",fcommand);
   retcode = retcode + system(fcommand); // execute the command
   printf("compress retcode = %i\n",retcode);
@@ -586,12 +551,17 @@ int prep_data_files(char *startDT, char *endDT, char *ringbuffer_path)
 // the following function parses input to get start and end date-times for data upload
 int getDataDates(char *input, char* startpoint, char* endpoint)
  {
- // printf("input to extract from= '%s'\n", input);
+  printf("input to extract from= '%s'\n", input);
   int theLen = strlen(input);
   printf("len = %i\n",theLen);
   if(theLen < 180)
    {
-   return(0);  // this is not a DR command
+   return(-1);  // this is not a DR command
+   }
+  if(memcmp(&input[theLen - 42],"DR",2) != 0)
+   {
+   printf("M: response rec'd, not a DR (data request)\n");
+   return(-1);
    }
   printf("last char = %c\n",input[theLen - 1]);
   int s = 0;
@@ -610,7 +580,8 @@ int getDataDates(char *input, char* startpoint, char* endpoint)
    j++;
    } 
   startpoint[j] = 0;
-  return(1);
+  printf("M: start %s, end %s \n",startpoint,endpoint);
+  return(1);  // here, 1 indicates successful
  }
 
 
@@ -619,7 +590,7 @@ int getDataDates(char *input, char* startpoint, char* endpoint)
 /////////   Function to build channel config (CH) request & pass to DE  ////
 int makeCHrequest(int channelNo){
   int myretcode = -1;
-  printf("M: Build CH request\n");
+  printf("M: Build CH request, channel %i\n",channelNo);
   struct channelBuf chBuf;         // create & initialize channel description
   char b[sizeof(CHANNELBUF)];      // so we can copy to this later
   char target[20];
@@ -685,7 +656,7 @@ int makeCHrequest(int channelNo){
         chBuf.channelDef[i].channelFreq = (double)atof(configresult);
         }
       }  // end of subchannel for loop
-
+    chBuf.channelNo = 0;  // temp for debugging
     }  // end of handling channel zero
 
   if(channelNo == 1)  // this is a FT8-type channel
@@ -724,16 +695,61 @@ int makeCHrequest(int channelNo){
           }
         }
       }
+    chBuf.channelNo = 1;  // temp for debugging
     }  // end of handling channel 1
 
+// Note: a channel setup call must be done for a mode when user starts data collection
+// on that mode, so that (a) if user has changed frequency or other setting, it takes effect;,
+// and (b) channel setup should be done only for the mode(s) user has started so that
+// any already-running data collection is not disturbed.
 
+  if(channelNo == 2)  // this is a WSPR-type channel
+    {
+    memcpy(chBuf.VITA_type,"V4",2);  // specify standard VITA-49
+    int channelCount = 0;
+    // determine how many subchannels are configured
+    chBuf.channelDatarate = 375;   // hard coded for FT8 decoder
+    chBuf.activeSubChannels = 0;
+
+    for(int i=0;i < 8;i++) {
+      sprintf(target,"wsant%i",i);
+      num_items = rconfig(target,configresult,0);
+      if(num_items == 0)
+        {
+        printf("ERROR - wsant%i setting not found in config.ini\n",i);
+        }
+      else
+        {
+        printf("ftant%i CONFIG RESULT = '%s'\n",i,configresult);
+        if(memcmp(configresult, "Off",1) == 0)  // if this channel turned off,
+          continue;                             //  skip it 
+        chBuf.activeSubChannels++;
+        chBuf.channelDef[i].antennaPort = atoi(configresult);  // get antenna port
+        chBuf.channelDef[i].subChannelNo = i;
+        sprintf(target,"ws%if",i);  // now look for the frequency of this subchannel
+        num_items = rconfig(target,configresult,0);
+        if(num_items == 0)
+          {
+          printf("ERROR - ws%if setting not found in config.ini\n",i);
+          }
+        else
+          {
+          printf("ws%if CONFIG RESULT = '%s'\n",i,configresult);
+       // TODO: the following probably needs to be multiplied by 1,000,000.0
+          chBuf.channelDef[i].channelFreq = (double) atof(configresult);
+          }
+        }
+      }
+
+    chBuf.channelNo = 2;  // temp for debugging
+    }  // end of handling channel 2
 
   // send CH command to Port D
     struct sockaddr_in si_DE;
     struct sockaddr_in si_LH;
 
     int s, s1;
-    printf("define socket\n");
+    printf("M: CH: define socket\n");
     if ( (s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
 	  {
 	  	printf("socket s error");
@@ -756,14 +772,14 @@ int makeCHrequest(int channelNo){
 	  }
     si_LH.sin_addr.s_addr = htonl(INADDR_ANY);
  // Prep to receive AK from DE
-    printf("Bind to port for receiving AK or NK from DE\n");
+    printf("M: CH: Bind to port %i for receiving AK or NK from DE\n",DE_CONF_IN_port[channelNo]);
     if( bind(s1, (struct sockaddr*)&si_LH, sizeof(si_LH)) == -1)
       {
         printf("s1 bind error\n");
      //   die("s1 bind error");
       }
 
-    printf("send\n");
+    printf("M: send\n");
 		//send the message
     if (sendto(s, &chBuf, sizeof(chBuf) , 0 , (struct sockaddr *) &si_DE, sizeof(si_DE))==-1)
 		{
@@ -781,7 +797,7 @@ int makeCHrequest(int channelNo){
          }
     else
          {
-         printf("Received %s from DE at %s:%d\n",replyBuf.cmd, inet_ntoa(si_DE.sin_addr),
+         printf("M: Received %s from DE at %s:%d\n",replyBuf.cmd, inet_ntoa(si_DE.sin_addr),
                 ntohs(si_DE.sin_port));
 
          if (memcmp(replyBuf.cmd,"AK",2) == 0)  // did we get AK from DE?
@@ -796,36 +812,6 @@ int makeCHrequest(int channelNo){
 
 }
 
-
-///////////////////// open config file ///////////////
-int openConfigFile()
-{
- // printf("test - config init\n");
-  config_init(&cfg);
-
-  /* Read the file. If there is an error, report it and exit. */
-
-// The only thing we use this config file for is to get the path to the
-// python config file. Seems like a kludge, but allows flexibility in
-// system directory structure.
- // printf("test - read config file\n");
-  if(! config_read_file(&cfg, "/home/odroid/projects/TangerineSDR-notes/mainctl/main.cfg"))
-  {
-    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-            config_error_line(&cfg), config_error_text(&cfg));
-    puts("ERROR - there is a problem with main.cfg configuration file");
-    config_destroy(&cfg);
-    return(EXIT_FAILURE);
-  }
-//  printf("test - look up config path\n");
-  if(config_lookup_string(&cfg, "config_path", &configPath))
-    printf("Setting config file path to: %s\n\n", configPath);
-  else
-    fprintf(stderr, "No 'config_path' setting in configuration file main.cfg.\n");
-    return(EXIT_FAILURE);
- // printf("test - config path=%s\n",configPath);
-  return(0);
-} 
 
 ////////////// Data Uploader thread /////////////////////////////////////
 void *dataUpload(void *threadid) {
@@ -900,7 +886,8 @@ void *dataUpload(void *threadid) {
   sprintf(uploadCommand,"lftp -e 'set net:limit-rate %s;mirror -R --Remove-source-files --verbose %s %s/sftp-test;exit' -u %s,%s sftp://%s >> %s/upload.log",throttle,uploadPath,node,node,"odroid",hostURL,logPath);
   printf("Upload command=%s\n",uploadCommand);
   rc = system(uploadCommand);  // just do it
-
+  printf("M: Upload of ringbuffer data complete\n");
+  uploadInProgress = 0; // indicate that we are done
 }
 
 ///////////////////////// Discover HIPSDR compliant devices ///////////////
@@ -1055,6 +1042,219 @@ int create_channel(int channelNo) {
 }
 
 
+
+//////////////////////////////////////////////////////////////////
+//////////////   heartbeat using standard tcp & threading ////////
+void * heartbeat(void *threadid) {
+
+printf("M: Starting HEARTBEAT thread  ###########################    \n");
+int portno = 5000;  // default, to be replaced by configured value.
+
+char *host = "192.168.1.67"; // default, to be replaced by configurea value.
+char centralHost[20] = "192.168.1.67";
+
+//char *message_fmt = "POST /apikey/SHGJKD HTTP/1.0\r\n\r\n";
+
+struct hostent *server;
+struct sockaddr_in serv_addr;
+struct timeval timeout;
+int sockfd, bytes, sent, received, total;
+char message[1024],response[65536];
+
+timeout.tv_sec = 10;  // if Central Host doesn't respond, we ignore
+timeout.tv_usec = 0;  //  and will try again after the pause time
+
+char tbuf[30];
+struct timeval tv;
+time_t curtime;
+int heartbeat_interval = 60;  // seconds
+
+char mytoken[75];
+
+num_items = rconfig("token_value",configresult,0);
+if(num_items == 0)
+  {
+  printf("ERROR - token_value setting not found in config.ini");
+  }
+else
+  {
+  printf(" CONFIG RESULT = '%s'\n",configresult);
+  printf("len =%lu\n",strlen(configresult));
+  strcpy(mytoken, configresult);
+  }
+
+num_items = rconfig("heartbeat_interval",configresult,0);
+if(num_items == 0)
+  {
+  printf("ERROR - heartbeat_interval setting not found in config.ini");
+  }
+ else
+  {
+  printf("M: HB interval CONFIG RESULT = '%s'\n",configresult);
+  printf("len =%lu\n",strlen(configresult));
+  heartbeat_interval = atoi(configresult);
+  }
+
+num_items = rconfig("central_host",configresult,0);
+if(num_items == 0)
+  {
+  printf("ERROR - central host setting not found in config.ini");
+  }
+else
+  {
+  printf(" CONFIG RESULT = '%s'\n",configresult);
+  strcpy(centralHost, configresult);
+  // strcpy(*host, configresult);
+  }
+num_items = rconfig("central_port",configresult,0);
+if(num_items == 0)
+  {
+  printf("ERROR - Central Port setting not found in config.ini");
+  }
+else
+  {
+  portno = atoi(configresult);
+  }
+
+while(1)  // start of heartbeat loop
+  {
+
+  printf("M: hearbeat - set up socket\n");
+
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0) printf("M: Heartbeat thread- ERROR opening socket\n");
+
+  if (setsockopt (sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,
+        sizeof(timeout)) < 0)
+       printf("M: Set socket option rcv timeout failed\n");
+  if (setsockopt (sockfd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout,
+        sizeof(timeout)) < 0)
+       printf("M: Set socket option send timeout failed\n");
+
+  server = gethostbyname(centralHost);
+  if (server == NULL) printf("M: Heartbeat thread - ERROR, no such host: %s\n",centralHost);
+
+  memset(&serv_addr,0,sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port = htons(portno);
+  memcpy(&serv_addr.sin_addr.s_addr,server->h_addr,server->h_length);
+ int central_connect = 0;
+
+ do {
+  printf("M: try to connect to central...\n");
+  if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
+    {
+    printf("M: Heartbeat - Could not reach Central Control, will try again in 1 min.\n");
+  //  close(sockfd);
+    sleep(60);
+    }
+  else
+    central_connect = 1;
+    printf("Heartbeat socket connected\n");
+ }
+ while (central_connect == 0);
+
+
+  gettimeofday(&tv, NULL);
+  curtime = tv.tv_sec;
+  strftime(tbuf, 30, "%m-%d-%Y-%T.",localtime(&curtime));
+  printf("Heartbeat TOD: '%s' %ld\n",tbuf,tv.tv_usec);
+  sprintf(message,"POST /apikey/%s-%s HTTP/1.0\r\n\r\n",mytoken,tbuf);
+  printf("M: send heartbeat, message=%s \n",message);
+  total = strlen(message);
+
+  sent = 0;
+  do {
+   bytes = write(sockfd,message+sent,total-sent);
+   if (bytes < 0)
+     {
+     printf("M: Heartbeat - ERROR writing message to socket\n");
+     close(sockfd);
+     return NULL;
+     }
+   else
+      printf("M: Heartbeat sent, # bytes = %i\n", bytes);
+   if (bytes == 0)
+    //  return NULL;
+      break;
+   sent+=bytes;
+  } while (sent < total);
+
+  memset(response,0,sizeof(response));
+  total = sizeof(response)-1;
+
+  received = 0;
+
+  do {
+
+   bytes = read(sockfd,response+received,total-received);
+   if (bytes < 0)
+    {
+    printf("M: Heartbeat - ERROR reading response from socket\n");
+    close(sockfd);
+
+    return NULL;
+    }
+   else
+    printf("M: Heartbeat Response received from Central Control - %i bytes\n",bytes);
+   if (bytes == 0)
+     break;
+  received+=bytes;
+  } while (received < total);
+
+/*
+  if (received == total)
+    {
+    printf("M: Heartbeat - ERROR storing complete response from socket");
+    close(sockfd);
+    sleep(heartbeat_interval);
+    continue;
+    }
+*/
+
+
+
+ // 
+  printf("M: Heartbeat Response received from Central Control\n");
+  printf("----------------------------------------------------\n");
+  printf("%s\n",response);
+  printf("----------------------------------------------------\n");
+  char theStart[30];
+  char theEnd[30];
+  int fc = 0;
+  if(fc = getDataDates(response, &theStart[0], &theEnd[0]))
+   {
+   printf("M: Received a DR data request from Central; fc=%i, u-i-p=%i\n",fc,uploadInProgress);
+
+   if(!uploadInProgress & fc == 1)
+    {
+    printf("M: preparing data\n");
+    int rp = prep_data_files(theStart, theEnd, ringbuffer_path);
+    int uplrc = 0;
+    long h;
+    pthread_t uplthread;
+    printf("M: Start upload thread\n");
+    uplrc = pthread_create(&uplthread, NULL, dataUpload, (void*)h);
+    }
+   }
+
+
+  printf("M: socket to Central, shutdown\n");
+  close(sockfd);
+ // sockfd.Disconnect(true);
+
+
+  printf("M: Heartbeat sleep for %i sec. starting\n",heartbeat_interval);
+  sleep(heartbeat_interval);
+
+  }  // end of heatbeat loop
+
+return NULL;
+
+}  // end of heartbeat thread
+
+
+//////////////////////////////////////////////////////////////////////
 /////////////////// UNIT TEST SETUP //////////////////////////////////
 
 int max (int n1, int n2 )
@@ -1541,8 +1741,8 @@ int main(int argc, char *argv[]) {
     strcpy(firehoseR_path,configresult);
     } 
 
-  // Send CREATE CHANNEL to DE for up to 3 channels  TODO: add WSPR
-  for(int channel=0;channel < 2;channel++)
+  // Send CREATE CHANNEL to DE for up to 3 channels 
+  for(int channel=0;channel < 3;channel++)
     {
     DE_CONF_IN_port[channel] = 0;
     printf("Create Channel %i request\n", channel);
@@ -1551,12 +1751,50 @@ int main(int argc, char *argv[]) {
     }
   // send CONFIGURE CHANNELS to set up the created channels
   int crc;
-  for(int channel=0;channel < 2;channel++)
+
+/*
+  for(int channel=0;channel < 4;channel++)
     {
     crc = makeCHrequest(channel);
-    printf("Config channel rc for channel %i = %i\n",channel, rc);
-    sleep(0.2);
+    printf("M: CONFIGURE CHANNEL command for channel %i, rc = %i\n",channel, rc);
+    sleep(0.1);
     }
+*/
+    printf("M: makeCHrequest for channel 2\n");
+    crc = makeCHrequest(2);
+    printf("M: CONFIGURE CHANNEL command for channel 2, rc = %i\n", rc);
+    sleep(0.2);
+
+    printf("M: makeCHrequest for channel 1\n");
+    crc = makeCHrequest(1);
+    printf("M: CONFIGURE CHANNEL command for channel 1, rc = %i\n",rc);
+    sleep(0.2);
+
+    printf("M: makeCHrequest for channel 0\n");
+    crc = makeCHrequest(0);
+    printf("M: CONFIGURE CHANNEL command for channel 0, rc = %i\n",rc);
+    sleep(0.2);
+
+
+    int hbrc = 0;
+    long h;
+  int heartbeat_interval = 60;  // seconds
+  num_items = rconfig("heartbeat_interval",configresult,0);
+  if(num_items == 0)
+    {
+    printf("ERROR - heartbeat_interval setting not found in config.ini");
+    }
+  else
+    {
+    printf(" CONFIG RESULT = '%s'\n",configresult);
+    printf("len =%lu\n",strlen(configresult));
+    heartbeat_interval = atoi(configresult);
+    }
+
+    pthread_t hb_tid;
+    int err1 = pthread_create(&hb_tid, NULL, heartbeat, NULL);
+
+
 
   // Start thread for processing user actions, i.e., commands arriving
   // on TCP port from app.py
@@ -1599,20 +1837,6 @@ int main(int argc, char *argv[]) {
 	pclose(fp2);
 	}
 
-    int hbrc = 0;
-    long h;
-  int heartbeat_interval = 60;  // seconds
-  num_items = rconfig("heartbeat_interval",configresult,0);
-  if(num_items == 0)
-    {
-    printf("ERROR - heartbeat_interval setting not found in config.ini");
-    }
-  else
-    {
-    printf(" CONFIG RESULT = '%s'\n",configresult);
-    printf("len =%lu\n",strlen(configresult));
-    heartbeat_interval = atoi(configresult);
-    }
 
 
 ////////////////////////////////////////////////////////////////

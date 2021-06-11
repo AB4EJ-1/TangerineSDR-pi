@@ -67,7 +67,7 @@ function myTimer(){
   var d= new Date();
 document.getElementById("dt").innerHTML = d.toUTCString()
 
- fetch('/magnet/data')
+ fetch('/magnetdata')
   .then(function (response) {
     return response.text();
    }).then(function (text) {
@@ -84,7 +84,7 @@ document.getElementById("dt").innerHTML = d.toUTCString()
 <script>
 
 
- fetch('/magnet/data')
+ fetch('/magnetdata')
   .then(function (response) {
     return response.text();
    }).then(function (text) {

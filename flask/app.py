@@ -62,6 +62,8 @@ from pyhamtools import locator
 import requests
 from requests.structures import CaseInsensitiveDict
 
+from pathlib import Path
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'here-is-your-secret-key-ghost-rider'
 app.secret_key = 'development key'
@@ -83,6 +85,8 @@ statusRG = 0
 statusSnap = 0
 statusFHR = 0
 statusmain = 0
+magPortStatus = 0
+s = 0
 global tcp_client
 f = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -395,7 +399,7 @@ def heartbeat_thread(threadname, a):
             log("filecompress : " + command, log_INFO)
             print("compress command: ", command)
             os.system(command)
-            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;mkdir d1;exit' -u " + theNode + "," + theToken + " sftp://" + central_host
+            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;mkdir d" + DR_pending + ";exit' -u " + theNode + "," + theToken + " sftp://" + central_host
             print("Upload command = '" + command + "'")
             log("Uploading, Node = " + theNode + " token = " + theToken, log_INFO)
             print("Starting upload...")
@@ -415,6 +419,7 @@ def sdr():
     form = MainControlForm()
     global theStatus, theDataStatus, tcp_client, statusmain
     global statusFT8, statusWSPR, statusRG, statusSnap, statusFHR
+    global magPortStatus
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     log("Route / " + request.method, log_DEBUG)
@@ -481,14 +486,14 @@ def sdr():
                 log_NOTICE)
             print("F: error - user selected both ringbuffer and firehose")
             form.errline = "Select EITHER Ringbuffer or Firehose mode"
-            form.dataStatus = "* * ERROR * *  See below."
+            form.dataStat = "* * ERROR * * Select EITHER Ringbuffer or Firehose mode."
             return render_template('tangerine.html', form=form)
             
         if((form.modeR.data or form.modeF.data or form.modeS.data) and form.modeL.data):
             log("Error - user selected Firehose-L and some other mode",log_NOTICE)
             print("F: error - user selected both Firehose-L and some other mode")
             form.errline = "Firehose-L mode can't be combined with any other data acquisition mode"
-            form.dataStat = "* * ERROR * * See below."
+            form.dataStat = "* * ERROR * * Select EITHER ringbuffer or continuous upload"
             return render_template('tangerine.html', form=form)
 
 
@@ -611,8 +616,8 @@ def sdr():
                 # current settings.
 
                 now = datetime.now()
-
-                if (form.mode.data == 'firehoseR'):
+       #         print("FOR STARTING DATA COLL, form.mode.data=",form.mode.data)
+                if (parser['settings']['firehoser_mode'] == "On"):
                     metadataPath = parser['settings']['firehoser_path']
                 else:
                     metadataPath = parser['settings']['ringbuffer_path']
@@ -655,9 +660,17 @@ def sdr():
                 for i in range(5): # try up to 5 times to get properties file (race condition)
                    print("Try to open properties file")
                    try:
-                     f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
+                     chk_file = Path(metadataPath + '/drf_properties.h5')
+                     if chk_file.is_file():
+                       print('PROPERTIES FILE FOUND')
+                     else:
+                       print('ERROR, NO PROPERTIES FILE: ' + metadataPath + '/drf_properties.h5')
+                   
+                                  
+                     f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r')
                      print("Properties file found")
                      log("Properties file opened", log_INFO)
+                     f5.close()
                      break                  
                    except Exception as e:
                      print(e)
@@ -667,9 +680,10 @@ def sdr():
                 try:
                   #  time.sleep(2)  #wait for properties file to be created
                     #     metadataPath = parser['settings']['ringbuffer_path'] + "/" + subdir
-                    print("Update properties file at ", metadataPath)
+                    print("Update properties file ", metadataPath + '/drf_properties.h5')
                     log("Try to update properties file", log_INFO)
-                    f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
+                    f5 = h5py.File(metadataPath + '/aux_drf_properties.h5', 'a')
+                 #   f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
                     f5.attrs.__setitem__('Subchannel_frequencies_MHz', chf)
                     f5.attrs.__setitem__('Data_source', "TangerineSDR")
                     f5.attrs.__setitem__('Antenna_ports', ant)
@@ -681,6 +695,7 @@ def sdr():
                     f5.attrs.__setitem__('Antenna1',parser['profile']['antenna1'])
                     f5.attrs.__setitem__('GPSDO',parser['profile']['gpsdo'])
                     f5.attrs.__setitem__('Elevation_meters',parser['profile']['elevation'])
+                    print("ATTR Data source set to" + f5.attrs.__getitem__('Data_source'))
                     f5.close()
                 except Exception as e:
                     print(e)
@@ -1291,8 +1306,12 @@ def desetup():
 
         print("temp path / directory existence check: ", tempPathExists)
         if tempPathExists == False:
-            pageStatus = pageStatus + "temp output path not a directory. "
-            statusCheck = False
+            try:
+              os.mkdir(result.get('temppath'))
+              statusCheck = True
+            except:
+              pageStatus = pageStatus + "temp output path not a directory; could not create. "
+              statusCheck = False
 
         if dataCollStatus == 1:
             pageStatus = pageStatus + "ERROR: you must stop data collection before saving changes here. "
@@ -1487,22 +1506,75 @@ def magnet():
     parser.read('config.ini')
     loglevel = int(parser['settings']['loglevel'])
     log("/magnet", log_DEBUG)
-    theStatus = "Starting magnetometer"
+    theStatus = "Starting magnetometer via shell"
+    syscommand = "sh runMag.sh &"
+    os.system(syscommand);
     if request.method == 'GET':
             return render_template('magnet.html',
                                status=theStatus,
                                form = form)
+                              
+@app.route("/magnetdata",methods=['POST','GET'])
+def magnetdata():
+    global magPortStatus, s
+    print("REACHED /magnetdata fetch")
+    global theStatus, theDataStatus 
+ #   if magPortStatus == 0:
+ #     return("rm3100 not active")
+           
+    if magPortStatus == 0:
+      UDP_IP = "127.0.0.1"
+      UDP_PORT = 9998
+      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+      s.bind((UDP_IP, UDP_PORT))
+      magPortStatus = 1
+      return("Connecting to magnetometer...")
+    else:
+      data, address = s.recvfrom(9998)
+      print("received ", data.decode('utf-8'),"\n")
+      jdata = data.decode('utf-8')
+      return str(jdata)                      
                                
-@app.route("/magnet/data", methods=['POST','GET'])
+@app.route("/magnetdata1", methods=['POST','GET'])
 def get_mag():
+    global magPortStatus, s
+    print("REACHED /magnet")
+    global theStatus, theDataStatus
+    form = MainControlForm()
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read('config.ini')
+    loglevel = int(parser['settings']['loglevel'])
+    log("/magnet", log_DEBUG)
+    theStatus = "Starting magnetometer"
+    if magPortStatus == 0:
+      UDP_IP = "127.0.0.1"
+      UDP_PORT = 9998
+      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+      s.bind((UDP_IP, UDP_PORT))
+      magPortStatus = 1
+      
     print("Reached magnet data")
+    
+    if request.method == 'GET':
+      return render_template('magnet.html',
+                               status=theStatus,
+                               form = form)
+
     if request.method == 'POST':
       print("get_mag POST recd")
       return 'OK', 200
     else:
       currentDT = datetime.now()
-      
-      return str(currentDT)
+      jdata = ""
+      if magPortStatus == 1:
+        data, address = s.recvfrom(9998)
+        print("received ", data.decode('utf-8'),"\n")
+        jdata = data.decode('utf-8')
+        return str(jdata)
+        
+    return render_template('magnet.html',
+                               status=theStatus,
+                               form = form)
 
 @app.route("/callsign", methods=['POST', 'GET'])
 def callsign():
