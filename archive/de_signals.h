@@ -22,11 +22,7 @@ Maps program mnemonics to 2-byte commands to be passed to DE
 #define RESTART_DE          "XR"  // asks DE to do a cold start
 #define FT_DATA_BUFFER      "FT"  // this is an FT8 data packet
 #define RG_DATA_BUFFER      "RG"  // this is a ringbuffer (or firehose) data packet
-#define WS_DATA_BUFFER      "WS"  // this is a WSPR data buffer
 #define STATUS_OK           "AK"  // last command was accepted
-#define MEM_WRITE           "MW"  // write to sub-device memory
-#define MEM_READ            "MR"  // read from sub-device memory
-#define READ_RESPONSE       "RR"  // result of read of sub-device memory
 
 
 // buffer for A/D data from DE
@@ -35,7 +31,25 @@ struct dataSample
 	float I_val;
 	float Q_val;
 	};
-
+typedef struct dataBuf
+	{
+    char bufType[2];
+	union {  // this space contains buffer length for data buffer, error code for NAK
+	  long bufCount;
+      char errorCode[2];
+	  } dval;
+	long timeStamp;
+    union {
+     int channelNo;
+     int channelCount;
+     };
+    double centerFreq;
+ 
+	//struct dataSample myDataSample[1024]; this is the logical layout using dataSample.
+    //    Below is what Digital RF reequires to be able to understand the samples.
+    //    In the array, starting at zero, sample[j] = I, sample[j+1] = Q (complex data)
+    struct dataSample theDataSample[1024];  
+	} DATABUF ;
 
 typedef struct VITAdataBuf
  {

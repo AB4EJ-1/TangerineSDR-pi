@@ -64,7 +64,7 @@ typedef struct flexDataBuf
 struct sockaddr_in flex_addr;
 static  int fd;
 
-//static struct dataBuf iqbuffer;
+static struct dataBuf iqbuffer;
 static struct flexDataBuf iqbuffer2;
 static struct VITAdataBuf iqbuffer2_in;
 static struct VITAdataBuf iqbuffer2_out;
@@ -252,7 +252,7 @@ void *sendFT8flex(void * threadid){
      {
       printf("FT8: try to send, streamNo = %i \n",streamNo);
 
-      int sentBytes = sendto(sockft8out, (const struct VITAdataBuf *)&ft8buffer_out[streamNo], sizeof(ft8buffer_out[0]), 0, 
+      int sentBytes = sendto(sockft8out, (const struct dataBuf *)&ft8buffer_out[streamNo], sizeof(ft8buffer_out[0]), 0, 
 	      (struct sockaddr*)&client_addr2, sizeof(client_addr2));
        outputbuffercount[streamNo] = 0;
        totaloutputbuffercount[streamNo] ++;
@@ -382,7 +382,7 @@ void *sendwsprflex(void * threadid){
      {
       printf("wspr: try to send to port %i, streamNo = %i \n",LH_DATA_IN_port[2],streamNo);
 
-      int sentBytes = sendto(sockwsprout, (const struct VITAdataBuf *)&wsprbuffer_out[streamNo], sizeof(wsprbuffer_out[0]), 0, 
+      int sentBytes = sendto(sockwsprout, (const struct dataBuf *)&wsprbuffer_out[streamNo], sizeof(wsprbuffer_out[0]), 0, 
 	      (struct sockaddr*)&client_addr3, sizeof(client_addr3));
       printf("#bytes sent: %i\n",sentBytes);
        outputbuffercount[streamNo] = 0;
@@ -515,7 +515,7 @@ void *sendFHData(void * threadid){
 
   //  printf(" dest IP addr = %s\n",inet_ntoa(si_LH_portF0.sin_addr));
   //  printf(" dest port = %d\n",(int)ntohs(si_LH_portF0.sin_port));
-    int sentBytes = sendto(sockRGout, (const struct VITAdataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
+    int sentBytes = sendto(sockRGout, (const struct dataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
 	      (struct sockaddr*)&si_LH_portF0, slen);
     if(sentBytes < 0)
       {
@@ -640,7 +640,7 @@ void *sendFlexData(void * threadid){
 
   //  printf(" dest IP addr = %s\n",inet_ntoa(si_LH_portF0.sin_addr));
   //  printf(" dest port = %d\n",(int)ntohs(si_LH_portF0.sin_port));
-    int sentBytes = sendto(sockRGout, (const struct VITAdataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
+    int sentBytes = sendto(sockRGout, (const struct dataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
 	      (struct sockaddr*)&si_LH_portF0, slen);
     if(sentBytes < 0)
       {
@@ -1163,6 +1163,187 @@ void *awaitConfig(void *threadid) {
     }
 }
 
+//////////////////////////////////////////////////////////////////////////////////
+// this thread gets UDP packets being sent by pihpsdr, forwards to mainctl on command
+void *sendData1(void *threadid) {
+
+  int yes = 1;
+ // struct sockaddr_in client_addr3;
+  struct sockaddr_in server_addr3;
+  int addr_len;
+  int count;
+  int ret;
+  long bufcount = 0;
+  int sentBytes = 0;
+  fd_set readfd;
+  //char buffer[9000];
+
+  sock3 = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sock3 < 0) {
+    perror("sock3 error\n");
+    int r=-1;
+    int *ptoi;
+    ptoi = &r;
+    return (ptoi);
+  }
+
+  addr_len = sizeof(struct sockaddr_in);
+
+  memset((void*)&server_addr3, 0, addr_len);
+  server_addr3.sin_family = AF_INET;
+  server_addr3.sin_addr.s_addr = htons(INADDR_ANY);
+  server_addr3.sin_port = htons(UDPPORT);
+
+  ret = bind(sock3, (struct sockaddr*)&server_addr3, addr_len);
+  if (ret < 0) {
+    perror("UDP bind error\n");
+    int r=-1;
+    int *ptoi;
+    ptoi = &r;
+    return (ptoi);
+  }
+  while (1) {
+    FD_ZERO(&readfd);
+    FD_SET(sock3, &readfd);
+    printf("read from port %i\n",UDPPORT);
+  //  ret = select(sock3, &readfd, NULL, NULL, 0);
+    ret = 1;
+  //  printf("ret = %i\n",ret);
+    if (ret > 0) {
+      if (FD_ISSET(sock3, &readfd)) {
+        printf("attempt read\n");
+        count = recvfrom(sock3, &iqbuffer, sizeof(iqbuffer), 0, (struct sockaddr*)&server_addr3, &addr_len);
+   //     count = recvfrom(sock3, &iqbuffer2, sizeof(iqbuffer2), 0, (struct sockaddr*)&server_addr3, &addr_len);
+        printf("bytes received:  %i\n",count);
+
+
+	    time_t epoch = time(NULL);
+	//printf("unix time = %ld\n", epoch);
+    //    strncpy(iqbuffer.bufType,"RG",2);
+	    iqbuffer.timeStamp = (double) epoch;
+        iqbuffer.channelCount = 1;  // probably duplicates functinoality in pihpsdr
+   //     iqbuffer.dval.bufCount = bufcount++;
+        iqbuffer.channelNo = 0;
+        client_addr.sin_port = htons(LH_DATA_IN_port[0]);
+
+        printf("forwarding bytes %i, count=%li\n",count,bufcount);
+        sentBytes = sendto(sock, (const struct dataBuf *)&iqbuffer, sizeof(iqbuffer), 0, (struct sockaddr*)&client_addr, sizeof(client_addr));
+        printf("port %i, bytes sent: %i \n",LH_DATA_IN_port[0], sentBytes); 
+
+        if(stopData)
+	    {
+         puts("UDP thread end; close socket");
+         close(sock3);
+	     pthread_exit(NULL);
+	    }
+
+      }
+    }
+
+  }
+
+}
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+///// Data acquisition (ring buffer or firehose) simulation thread ////////////////////////
+//////////  creates a totally simulated signal (no data from any radio )/////////////////
+void *sendData(void *threadid) {
+  int addr_len;
+  
+  //memset((void*)&server_addr, 0, addr_len);
+  printf("starting thread, to send to LH port %d, using following %i channels:\n",LH_DATA_IN_port[0], noOfChannels);
+
+    for (int i=0; i < noOfChannels; i++) 
+      {
+      if(cb.chBuf.channelDef[i].antennaPort == -1)  // means this channel is off
+        continue;
+      else
+        printf("%i, Channel %i, Port %i, Freq %lf\n", i, cb.chBuf.channelDef[i].subChannelNo, 
+        cb.chBuf.channelDef[i].antennaPort, cb.chBuf.channelDef[i].channelFreq);
+      }
+
+// build an example DE data buffer containing a low freq sine wave
+	float vI;
+	float vQ;
+	float A;
+	A = 1.0;
+	long bufcount = 0;
+	struct dataBuf myBuffer;
+	struct dataSample mySample;
+	time_t epoch = time(NULL);
+	printf("unix time = %ld\n", epoch);
+    strncpy(myBuffer.bufType,"RG",2);
+	myBuffer.timeStamp = (double) epoch;
+    myBuffer.channelCount = noOfChannels;
+    int sampleCount = 1024 / noOfChannels;
+    printf("Active channels: %i \n",noOfChannels);
+    printf("Sample count per buffer: %i \n", sampleCount);
+    printf("Data rate: %i sps \n",dataRate);
+    double bufferDelay = ((double)sampleCount / (double)dataRate) / 1E-06;
+    printf("Delay per buf, microsec = %.3E \n",bufferDelay);
+
+    double theStep = 6.283185307179586476925286766559 * (double)noOfChannels / 1024.0;
+    int k = 0;
+    printf("start data loop\n");
+	for (int i = 0; i < (sampleCount * noOfChannels); i=i+noOfChannels) {
+     for(int j = 0; j < noOfChannels;j++) {
+
+      // here the float j produces different frequency for each channel
+	//  I =  sin ( (double)i * (float)(j+1) * 3.1415926535897932384626433832795 / (double)(sampleCount));
+	//  Q =  cos ( (double)i * (float)(j+1) * 3.1415926535897932384626433832795 / (double)(sampleCount));
+
+// simple, single frequency
+     vI = cos ((double)k * theStep * (double)(j+1)  );  
+     vQ = sin ((double)k * theStep * (double)(j+1)  );  
+  
+
+      vI = 0.7 * cos ((double)k * theStep * (double)(j+1) ) + 0.3 * cos((double)k * 3.0 * theStep * (double)(j+1) );  // the real part
+      vQ = 0.7 * sin ((double)k * theStep * (double)(j+1) ) + 0.3 * sin((double)k * 3.0 * theStep * (double)(j+1) );  // the imaginary part
+
+      if(i<10) printf("%i  %i   %i    %f    %f   \n",i,j,k,vI,vQ);
+	  myBuffer.theDataSample[i+j].I_val = vI;
+	  myBuffer.theDataSample[i+j].Q_val = vQ;
+           }
+      k++;
+      }
+  ssize_t sentBytes;
+  long loopstart;
+  loopstart = clock();
+
+  while(1)
+  { 
+   // puts("UDP thread start; hit sem_wait");
+    //sem_wait(&mutex);
+   // puts("passed wait");
+    myBuffer.dval.bufCount = bufcount++;
+
+    //client_addr.sin_port = htons(LH_port);
+ //   client_addr.sin_port = htons(d.myConfigBuf.dataPort);
+   
+    client_addr.sin_port = htons(LH_DATA_IN_port[0]);
+    sentBytes = sendto(sock, (const struct dataBuf *)&myBuffer, sizeof(myBuffer), 0, 
+	   (struct sockaddr*)&client_addr, sizeof(client_addr));
+
+ //   fprintf(stderr,"UDP message sent from thread to port %u. bytes= %ld\n", 
+   //        LH_DATA_IN_port, sentBytes); 
+   // sleep(1);
+    usleep(bufferDelay);  // wait for this many microseconds
+    if(stopData)
+	{
+         puts("UDP thread end");
+	 pthread_exit(NULL);
+	}
+	
+  //  sem_post(&mutex);
+  }
+
+  printf("sending data took ~ %zd  microsec\n", clock() - loopstart);
+
+  puts("ending thread");
+
+}
 
 /////////////////////////////////////////////////////////////////////
 void discoveryReply(char buffer[1024]) {
