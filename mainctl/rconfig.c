@@ -31,7 +31,7 @@ const char *configPath;
 ////// function to read config items from the (python) config file /////////
 int rconfig(char * arg, char * result, int testThis) {
 const char delimiters[] = " =";
-printf("start fcn looking for %s\n", arg);
+printf("rconfig - start fcn looking for %s\n", arg);
 FILE *fp;
 char *line = NULL;
 size_t len = 0;

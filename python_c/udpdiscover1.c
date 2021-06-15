@@ -605,7 +605,16 @@ static void discover(struct ifaddrs* iface) {
 	fcntl(discovery_socket, F_SETFL, flags &  ~O_NONBLOCK);
     } else {
 
+     // code here to bypass "tun0" VPN tunnnel if found
+        char stest[10];
+        strcpy(stest, "tun0");
         strcpy(interface_name,iface->ifa_name);
+        printf("Checking i/f name '%s'\n",interface_name);
+        if(strncmp(stest,interface_name,4) == 0) {
+          printf("Detected VPN tunnel, ignoring\n");
+          return;
+          }
+
         fprintf(stderr,"discover: looking for HPSDR devices on %s\n", interface_name);
 
         // send a broadcast to locate hpsdr boards on the network
@@ -783,7 +792,7 @@ void UDPdiscover(char *data, int *LH_port, int *DE_port) {
      {
      char IP_addr[16] = "";
      sprintf(IP_addr,"%s",inet_ntoa(discovered[i].info.network.address.sin_addr));
-      printf("udpdiscover1: DevIce %i is Tangerine at %s port %i\n",i,inet_ntoa(discovered[i].info.network.address.sin_addr), htons(discovered[i].info.network.address.sin_port));
+      printf("udpdiscover1: Device %i is Tangerine at %s port %i\n",i,inet_ntoa(discovered[i].info.network.address.sin_addr), htons(discovered[i].info.network.address.sin_port));
       *DE_port = htons(discovered[i].info.network.address.sin_port);
       
       printf("Passing device structure\n");

@@ -60,6 +60,9 @@ from flask_wtf import CSRFProtect
 
 from pyhamtools import locator
 import requests
+from requests.structures import CaseInsensitiveDict
+
+from pathlib import Path
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'here-is-your-secret-key-ghost-rider'
@@ -82,6 +85,8 @@ statusRG = 0
 statusSnap = 0
 statusFHR = 0
 statusmain = 0
+magPortStatus = 0
+s = 0
 global tcp_client
 f = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -194,7 +199,6 @@ def create_channel(channelNo, configPort, dataPort):
           rlist[2])
     LH_portA_socket.close()
     return
-
 
 def discover_DE():  # Here we call the UDPdiscover C routine to find first Tangerine on network
     global DE_IP_addr, DE_IP_portB, LH_IP_portA
@@ -314,7 +318,8 @@ def send_configuration():
 # Also looks for a Data Request response from Central, indicating that some part of ringbuffer
 # is to be uploaded.
 def heartbeat_thread(threadname, a):
-    log("Starting heartbeat thread", log_INFO)
+    log("Heartbeat thread starting...", log_INFO)
+    print("Staring heartbeat thread")
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     central_host = parser['settings']['central_host']
@@ -328,7 +333,18 @@ def heartbeat_thread(threadname, a):
     throttle = parser['settings']['throttle']
     DR_pending = parser['settings']['dr_pending']
     print("DR # pending=", DR_pending)
-    URL = "http://" + central_host + ":" + central_port + "/apikey/" + theToken
+    h = {    # this is to be station name, node#, and token
+        "nickname":"Station1",
+        "station_id":theNode,
+        "station_pass":theToken
+        }
+    headers = CaseInsensitiveDict()
+    headers["Accept"] = "application/json"
+    headers["Content-Type"] = "application/json"
+    upldat = json.dumps(h) # put station credentials into the JSON data packet
+    
+    
+    URL = "http://" + central_host + ":" + central_port + "/heartbeat/"
     PARAMS = "node=" + theNode
     log("Heartbeat URL: " + URL, log_DEBUG)
     session = requests.Session()
@@ -336,36 +352,41 @@ def heartbeat_thread(threadname, a):
         print("  V V V V V     HB thread    V V V V V")
         log("Send heartbeat to Central Control", log_INFO)
         print("send: '" + URL + "'")
-        r = session.get(url=URL, params=PARAMS)
-        print("HB response:", r.text)
+     #   r = session.get(url=URL, params=PARAMS)
+        r = requests.put(URL,headers=headers,data=upldat)
+        print("HB response:"  + str(r) + "text=" + r.text)
         log("Heartbeat response: " + r.text, log_NOTICE)
-        response = r.text.split()
+
         # in a Data Request, we expect:   DR  (Data Request#) (Start datteime) (End datetime)
-        if (response[0] == "DR"):
-            print("Data request#", response[1],
-                  " received from Central, START=", response[2], " END=",
-                  response[3])
+   #     if (response[0] == "DR"):
+        if (len(r.text) > 0):
+            r1 = json.loads(r.text)
+            print("DATA REQUEST ID",r1['requestID'])
+            print("START: ",r1['timestart'])
+            uploadstart = r1['timestart']
+            print("STOP:",r1['timestop'])
+            uploadend = r1['timestop']
             print("DR pending = '" + DR_pending + "'")
             if (
-                    int(DR_pending) == int(response[1])
+                    int(DR_pending) == int(r1['requestID'])
             ):  # we have already started (or completed) processing this one
-                print("DR# ", response[1],
+                print("DR# ", r1['requestID'],
                       " already processed; ignoring duplicate request")
                 time.sleep(heartbeat_interval)
                 continue
             else:  # keep track of most recently handled Data Request no.
-                DRstatus = "Data request# " + response[
-                    1] + " received from Central, START=" + response[
-                        2] + " END=" + response[3]
+                DRstatus = "Data request# " + str(r1['requestID']) \
+                     + " received from Central, START=" + uploadstart + \
+                     " END=" + uploadend
                 log(DRstatus, log_INFO)
-                requestNo = response[1]
+                requestNo = str(r1['requestID'])
                 command = 'logger "' + DRstatus + '"'
                 os.system(command)
                 parser.set('settings', 'dr_pending', requestNo)
                 fp = open('config.ini', 'w')
                 parser.write(fp)
                 fp.close()
-            command = "drf ls " + ringbuffer_path + " -r -s " + response[2] + " -e " + response[3] + \
+            command = "drf ls " + ringbuffer_path + " -r -s " + uploadstart + " -e " + uploadend + \
               " > " + RAMdisk_path + "/dataFileList"
             print("Ringbuffer content check command = ", command)
             log("drf command: " + command, log_INFO)
@@ -378,11 +399,15 @@ def heartbeat_thread(threadname, a):
             log("filecompress : " + command, log_INFO)
             print("compress command: ", command)
             os.system(command)
-            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + theNode + "/sftp-test;exit' -u " + theNode + ",odroid " + "sftp://" + central_host
+            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;mkdir d" + DR_pending + ";exit' -u " + theNode + "," + theToken + " sftp://" + central_host
             print("Upload command = '" + command + "'")
-            log("Upload command: " + command, log_INFO)
+            log("Uploading, Node = " + theNode + " token = " + theToken, log_INFO)
             print("Starting upload...")
             os.system(command)
+            log("Upload command processing completed", log_INFO)
+        else:
+            print("HB: null response from Central")
+        # if no text returned from server, sleep for heartbeat interval
         time.sleep(heartbeat_interval)
     return
 
@@ -394,6 +419,7 @@ def sdr():
     form = MainControlForm()
     global theStatus, theDataStatus, tcp_client, statusmain
     global statusFT8, statusWSPR, statusRG, statusSnap, statusFHR
+    global magPortStatus
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     log("Route / " + request.method, log_DEBUG)
@@ -460,14 +486,14 @@ def sdr():
                 log_NOTICE)
             print("F: error - user selected both ringbuffer and firehose")
             form.errline = "Select EITHER Ringbuffer or Firehose mode"
-            form.dataStatus = "* * ERROR * *  See below."
+            form.dataStat = "* * ERROR * * Select EITHER Ringbuffer or Firehose mode."
             return render_template('tangerine.html', form=form)
             
         if((form.modeR.data or form.modeF.data or form.modeS.data) and form.modeL.data):
             log("Error - user selected Firehose-L and some other mode",log_NOTICE)
             print("F: error - user selected both Firehose-L and some other mode")
             form.errline = "Firehose-L mode can't be combined with any other data acquisition mode"
-            form.dataStat = "* * ERROR * * See below."
+            form.dataStat = "* * ERROR * * Select EITHER ringbuffer or continuous upload"
             return render_template('tangerine.html', form=form)
 
 
@@ -590,8 +616,8 @@ def sdr():
                 # current settings.
 
                 now = datetime.now()
-
-                if (form.mode.data == 'firehoseR'):
+       #         print("FOR STARTING DATA COLL, form.mode.data=",form.mode.data)
+                if (parser['settings']['firehoser_mode'] == "On"):
                     metadataPath = parser['settings']['firehoser_path']
                 else:
                     metadataPath = parser['settings']['ringbuffer_path']
@@ -634,9 +660,17 @@ def sdr():
                 for i in range(5): # try up to 5 times to get properties file (race condition)
                    print("Try to open properties file")
                    try:
-                     f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
+                     chk_file = Path(metadataPath + '/drf_properties.h5')
+                     if chk_file.is_file():
+                       print('PROPERTIES FILE FOUND')
+                     else:
+                       print('ERROR, NO PROPERTIES FILE: ' + metadataPath + '/drf_properties.h5')
+                   
+                                  
+                     f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r')
                      print("Properties file found")
                      log("Properties file opened", log_INFO)
+                     f5.close()
                      break                  
                    except Exception as e:
                      print(e)
@@ -646,9 +680,10 @@ def sdr():
                 try:
                   #  time.sleep(2)  #wait for properties file to be created
                     #     metadataPath = parser['settings']['ringbuffer_path'] + "/" + subdir
-                    print("Update properties file at ", metadataPath)
+                    print("Update properties file ", metadataPath + '/drf_properties.h5')
                     log("Try to update properties file", log_INFO)
-                    f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
+                    f5 = h5py.File(metadataPath + '/aux_drf_properties.h5', 'a')
+                 #   f5 = h5py.File(metadataPath + '/drf_properties.h5', 'r+')
                     f5.attrs.__setitem__('Subchannel_frequencies_MHz', chf)
                     f5.attrs.__setitem__('Data_source', "TangerineSDR")
                     f5.attrs.__setitem__('Antenna_ports', ant)
@@ -660,6 +695,7 @@ def sdr():
                     f5.attrs.__setitem__('Antenna1',parser['profile']['antenna1'])
                     f5.attrs.__setitem__('GPSDO',parser['profile']['gpsdo'])
                     f5.attrs.__setitem__('Elevation_meters',parser['profile']['elevation'])
+                    print("ATTR Data source set to" + f5.attrs.__getitem__('Data_source'))
                     f5.close()
                 except Exception as e:
                     print(e)
@@ -781,6 +817,14 @@ def restart():
     log(" - - - Restarting - - -", log_NOTICE)
     DE_IP_portC = []
     LH_IP_portF = []
+    
+    
+    _thread.start_new_thread(heartbeat_thread, (
+        0,
+        0,
+        ))
+    
+    
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     print("F: restart; run discovery")
@@ -858,10 +902,7 @@ def restart():
 #    print("F: ringbuffer control activated")
     # start heartbeat thread that pings Central Control
     # threadname = "HB"
-    _thread.start_new_thread(heartbeat_thread, (
-        0,
-        0,
-    ))
+
 
     return redirect('/')
 
@@ -1265,8 +1306,12 @@ def desetup():
 
         print("temp path / directory existence check: ", tempPathExists)
         if tempPathExists == False:
-            pageStatus = pageStatus + "temp output path not a directory. "
-            statusCheck = False
+            try:
+              os.mkdir(result.get('temppath'))
+              statusCheck = True
+            except:
+              pageStatus = pageStatus + "temp output path not a directory; could not create. "
+              statusCheck = False
 
         if dataCollStatus == 1:
             pageStatus = pageStatus + "ERROR: you must stop data collection before saving changes here. "
@@ -1452,6 +1497,85 @@ def uploading():
                            form           = form,
                            status         = pageStatus)
 
+@app.route("/magnet", methods=['POST', 'GET'])
+def magnet():
+    print("REACHED /magnet")
+    global theStatus, theDataStatus
+    form = MainControlForm()
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read('config.ini')
+    loglevel = int(parser['settings']['loglevel'])
+    log("/magnet", log_DEBUG)
+    theStatus = "Starting magnetometer via shell"
+    syscommand = "sh runMag.sh &"
+    os.system(syscommand);
+    if request.method == 'GET':
+            return render_template('magnet.html',
+                               status=theStatus,
+                               form = form)
+                              
+@app.route("/magnetdata",methods=['POST','GET'])
+def magnetdata():
+    global magPortStatus, s
+    print("REACHED /magnetdata fetch")
+    global theStatus, theDataStatus 
+ #   if magPortStatus == 0:
+ #     return("rm3100 not active")
+           
+    if magPortStatus == 0:
+      UDP_IP = "127.0.0.1"
+      UDP_PORT = 9998
+      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+      s.bind((UDP_IP, UDP_PORT))
+      magPortStatus = 1
+      return("Connecting to magnetometer...")
+    else:
+      data, address = s.recvfrom(9998)
+      print("received ", data.decode('utf-8'),"\n")
+      jdata = data.decode('utf-8')
+      return str(jdata)                      
+                               
+@app.route("/magnetdata1", methods=['POST','GET'])
+def get_mag():
+    global magPortStatus, s
+    print("REACHED /magnet")
+    global theStatus, theDataStatus
+    form = MainControlForm()
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read('config.ini')
+    loglevel = int(parser['settings']['loglevel'])
+    log("/magnet", log_DEBUG)
+    theStatus = "Starting magnetometer"
+    if magPortStatus == 0:
+      UDP_IP = "127.0.0.1"
+      UDP_PORT = 9998
+      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+      s.bind((UDP_IP, UDP_PORT))
+      magPortStatus = 1
+      
+    print("Reached magnet data")
+    
+    if request.method == 'GET':
+      return render_template('magnet.html',
+                               status=theStatus,
+                               form = form)
+
+    if request.method == 'POST':
+      print("get_mag POST recd")
+      return 'OK', 200
+    else:
+      currentDT = datetime.now()
+      jdata = ""
+      if magPortStatus == 1:
+        data, address = s.recvfrom(9998)
+        print("received ", data.decode('utf-8'),"\n")
+        jdata = data.decode('utf-8')
+        return str(jdata)
+        
+    return render_template('magnet.html',
+                               status=theStatus,
+                               form = form)
+
 @app.route("/callsign", methods=['POST', 'GET'])
 def callsign():
     global theStatus, theDataStatus
@@ -1563,6 +1687,9 @@ def callsign():
                                c3=c3,
                                c4=c4,
                                c5=c5)
+
+
+      
 
 
 @app.route("/notification", methods=['POST', 'GET'])
@@ -1802,6 +1929,8 @@ def propagation():
         return render_template('ft8setup.html', form=form)
 
 
+
+
 # configure WSPR settings
 @app.route("/propagation2", methods=['POST', 'GET'])
 def propagation2():
@@ -1915,7 +2044,7 @@ def ft8list():
     ft8string = ""
     band = []
     # print("Entering _/ft8list")
-    log("_ft8list", log_DEBUG)
+  #  log("_ft8list", log_DEBUG)
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     for i in range(7):
@@ -1967,7 +2096,7 @@ def ft8list():
 
 @app.route('/_wsprlist')
 def wsprlist():
-    log("_wsprlist", log_DEBUG)
+  #  log("_wsprlist", log_DEBUG)
     wsprstring = ""
     band = []
     chnl = []
