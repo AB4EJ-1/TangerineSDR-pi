@@ -35,8 +35,7 @@
 #include <complex.h>
 #include <fftw3.h>
 
-//#define IP_FOUND "IP_FOUND"
-//#define IP_FOUND_ACK "IP_FOUND_ACK"
+
 #define PORT 1024
 
 #define UDPPORT 7100
@@ -111,15 +110,6 @@ struct iqpair {
   float qval;
 };
 
-union {
-  char mybuf1[100];
-  CONFIGBUF myConfigBuf;
-       } d;
-
-union {
-    char configBuffer[1024];
-    CHANNELBUF chBuf;
-    } cb ;
 
 
 static uint16_t LH_CONF_IN_port[3];  // port C, receives ACK or NAK from config request
@@ -218,9 +208,7 @@ void *sendFT8flex(void * threadid){
 	 pthread_exit(NULL);
 	 }
 
- // if(ret > 0){
-  // if (FD_ISSET(sock4, &readfd)){
-  //  printf("try read\n");
+
     count = recvfrom(sock4, &iqbuffer2, sizeof(iqbuffer2),0, (struct sockaddr*)&flex_addr, &addr_len);
 
     streamNo = (int16_t)iqbuffer2.stream_ID[3];
@@ -241,7 +229,7 @@ void *sendFT8flex(void * threadid){
    totalinputsamplecount[streamNo]++;  // goes to zero on first buffer
    if((totalinputsamplecount[streamNo] % 12) != 0)  // crummy decimation; TODO: correct this
      continue;
-   // inputbuffercount is multiple of 12 (or zero); save it
+  
    
    ft8buffer_out[streamNo].theDataSample[outputbuffercount[streamNo]].I_val = iqbuffer2.flexDataSample[inputbuffercount].I_val;
    ft8buffer_out[streamNo].theDataSample[outputbuffercount[streamNo]].Q_val = iqbuffer2.flexDataSample[inputbuffercount].Q_val;
@@ -262,9 +250,6 @@ void *sendFT8flex(void * threadid){
     }  // end of inputbuffercount loop (512 samples in the flex IQ packet)
 
 
-    
- //   }  // after FD_ISSET
- //  }  // end of if statement on return code from socket setup (if ret)
   } // end of repeating loop
 
  }  // end of function
@@ -347,10 +332,7 @@ void *sendwsprflex(void * threadid){
 	 pthread_exit(NULL);
 	 }
 
- // if(ret > 0){
-  // if (FD_ISSET(sock7, &readfd)){
-  //  printf("try read\n");
- //   printf("read from sock7\n");
+
     count = recvfrom(sock7, &iqbuffer3, sizeof(iqbuffer3),0, (struct sockaddr*)&flex_addr, &addr_len);
    // printf("got %i bytes from sock7\n",count);
     streamNo = (int16_t)iqbuffer3.stream_ID[3];
@@ -393,9 +375,6 @@ void *sendwsprflex(void * threadid){
     }  // end of inputbuffercount loop (512 samples in the flex IQ packet)
 
 
-    
- //   }  // after FD_ISSET
- //  }  // end of if statement on return code from socket setup (if ret)
   } // end of repeating loop
 
  }  // end of function
@@ -422,8 +401,6 @@ void *sendFHData(void * threadid){
   struct sockaddr_in si_LH_portF0;  // will use sockRGout
   memset((char *) &si_LH_portF0, 0, sizeof(si_LH_portF0));
   si_LH_portF0.sin_family = AF_INET;
- // si_LH_portF0.sin_port = htons(LH_DATA_IN_port[0]);
-//  si_LH_portF0.sin_addr.s_addr = client_addr.sin_addr.s_addr; 
 
 
   si_LH_portF0.sin_addr.s_addr = inet_addr(FH_DATA_IN_IP);
@@ -483,9 +460,7 @@ void *sendFHData(void * threadid){
    if (FD_ISSET(sock5, &readfd)){
  //   printf("try read\n");
     count = recvfrom(sock5, &iqbuffer2_in, sizeof(iqbuffer2_in),0, (struct sockaddr*)&flex_addr, &addr_len);
-  //  printf("bytes received = %i\n",count);
- //   printf("VITA header= %x %x\n",iqbuffer2_in.VITA_hdr1[0],iqbuffer2_in.VITA_hdr1[1]);
- //   printf("stream ID= %x%x%x%x\n", iqbuffer2_in.stream_ID[0],iqbuffer2_in.stream_ID[1], iqbuffer2_in.stream_ID[2],iqbuffer2_in.stream_ID[3]);
+
     memcpy(iqbuffer2_out.VITA_hdr1, iqbuffer2_in.VITA_hdr1, sizeof(iqbuffer2_out.VITA_hdr1));
 
     iqbuffer2_out.VITA_packetsize = sizeof(iqbuffer2_out);
@@ -510,11 +485,7 @@ void *sendFHData(void * threadid){
       iqbuffer2_out.theDataSample[i + 512] = iqbuffer2_in.theDataSample[i];
      }
     int slen = sizeof(si_LH_portF0);
-  //  int sentBytes = sendto(sock, (const struct dataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
-	//      (struct sockaddr*)&portF_addr, sizeof(portF_addr));
 
-  //  printf(" dest IP addr = %s\n",inet_ntoa(si_LH_portF0.sin_addr));
-  //  printf(" dest port = %d\n",(int)ntohs(si_LH_portF0.sin_port));
     int sentBytes = sendto(sockRGout, (const struct VITAdataBuf *)&iqbuffer2_out, sizeof(iqbuffer2_out), 0, 
 	      (struct sockaddr*)&si_LH_portF0, slen);
     if(sentBytes < 0)
@@ -753,13 +724,6 @@ while(1)
       char configReply[20] = "";
 
 
-   //   memcpy(d.mybuf1, buffer, sizeof(CONFIGBUF));
-
-   //   printf("CREATE CHANNEL RECD, cmd = %s, channel#=%i port C = %hu, port F = %hu \n",
-        //  d.myConfigBuf.cmd, d.myConfigBuf.channelNo, d.myConfigBuf.configPort, d.myConfigBuf.dataPort);
-
-  //    LH_CONF_IN_port[d.myConfigBuf.channelNo] = d.myConfigBuf.configPort;  // Port C
-   //   LH_DATA_IN_port[d.myConfigBuf.channelNo] = d.myConfigBuf.dataPort;  // Port F
       printf("ports set up; now set up sock\n");
       if (sock = socket(AF_INET, SOCK_DGRAM, 0) == -1)
           printf("creating sock failed\n");  // set up for sending to port F
@@ -780,10 +744,10 @@ while(1)
   //    client_addr.sin_port = htons(LH_CONF_IN_port[channelNo]);   // the ACK ges back to Port C
       client_addr.sin_port = LH_port;   // the ACK ges back to Port A
       printf("Set up the AK\n");
-      strncpy(d.myConfigBuf.cmd, "AK", 2);
+    //  strncpy(d.myConfigBuf.cmd, "AK", 2);
      
-      d.myConfigBuf.configPort = DE_CH_IN_port[channelNo]; // this is port D for this channel
-      d.myConfigBuf.dataPort = 0;  // this is Port E (mic) - currently unused
+   //   d.myConfigBuf.configPort = DE_CH_IN_port[channelNo]; // this is port D for this channel
+   //   d.myConfigBuf.dataPort = 0;  // this is Port E (mic) - currently unused
       printf("Sending AK to port %i\n",ntohs(client_addr.sin_port) );
       sprintf(configReply,"AK %i %i %i",channelNo,DE_CH_IN_port[channelNo],0);
    //   count = sendto(sock1, d.mybuf1, sizeof(d.myConfigBuf), 0, (struct sockaddr*)&client_addr, addr_len);
@@ -800,7 +764,6 @@ while(1)
 }
 
 
-//void *handleCommands(void *threadid, int channelNo)
 void *handleCommands(void* c) 
  {
   int channelNo = (int)c;
@@ -815,7 +778,7 @@ void *handleCommands(void* c)
 
   printf("Starting channel %i command processing\n",channelNo);
   printf("Port = %i\n",LH_CONF_IN_port[channelNo] );
-//  struct commandBuf cmdBuf;
+
   char workBuf[1024];
 
   int addr_len;
@@ -1103,65 +1066,10 @@ void *handleCommands(void* c)
     }
 ///////////////////// end of command processing section ////////////////
 
-
-
-
-
   
 
 }
 
-
-/////////// wait for & process CONFIG_CHANNELS (CH) /////////////////////////////
-void *awaitConfig(void *threadid) {
-
-  config_busy = 1;
-  printf("Starting await-config thread listening on port %d (Port D)\n",DE_CH_IN_port[0]);
-//  printf("... will send data to LH port %d\n",LH_DATA_IN_port);
-
-  int addr_len;
-  int ret;
-  int count;
-  int optval;
-  int sock2;
-// create & bind socket for inbound config packets
-  fd_set readcfg;
-  sock2 = socket(AF_INET,SOCK_DGRAM,0);
-  setsockopt(sock2, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval, sizeof(int));
-  if(sock2 < 0 ) { perror("sock2 error\n"); return (void *) -1; }
-  addr_len = sizeof(struct sockaddr_in);
-  memset((void*)&config_in_addr,0,addr_len);
-  config_in_addr.sin_family = AF_INET;
-  config_in_addr.sin_addr.s_addr = htons(INADDR_ANY);
-  config_in_addr.sin_port = htons(DE_CH_IN_port[0]);  // listen on Port D
-  ret = bind(sock2,(struct sockaddr *)&config_in_addr,addr_len);
-  if(ret < 0) { perror("sock2 bind error\n"); return (void *) -1; }
-  
-  while(1)
-    {
-    count = recvfrom(sock2, cb.configBuffer, sizeof(cb.configBuffer) , 0, 
-        (struct sockaddr*)&config_in_addr, &addr_len);
-
-    printf("CHANNEL Setup CH received %s\n",cb.chBuf.chCommand);
-    int channelNo = cb.chBuf.channelNo;
-    noOfChannels = cb.chBuf.activeSubChannels;
-    dataRate = cb.chBuf.channelDatarate;
-    printf("active channels: %i, rate = %i\n", noOfChannels, dataRate);
-    for (int i=0; i < noOfChannels; i++) 
-      {
-      if(cb.chBuf.channelDef[i].antennaPort == -1)  // means this channel is off
-        continue;
-      else
-        printf("%i, Channel %i, Port %i, Freq %lf\n", i, cb.chBuf.channelDef[i].subChannelNo, 
-        cb.chBuf.channelDef[i].antennaPort, cb.chBuf.channelDef[i].channelFreq);
-      }
-  
-    client_addr.sin_port = htons(LH_CONF_IN_port[cb.chBuf.channelNo] ); 
-
-    count = sendto(sock, "AK", 2, 0, (struct sockaddr*)&client_addr, addr_len);
-    printf("response = %u bytes sent to LH port %u \n ",count, LH_CONF_IN_port[cb.chBuf.channelNo]) ;
-    }
-}
 
 
 /////////////////////////////////////////////////////////////////////
@@ -1211,16 +1119,7 @@ int *run_DE(void)
     return (ptoi);
     }
 
-/*
-  sock4 = socket(AF_INET, SOCK_DGRAM, 0);  // for receiving IQ packets from FlexRadio (FT8)
-  if (sock4 < 0) {
-    perror("sock4 error\n");
-    int r=-1;
-    int *ptoi;
-    ptoi = &r;
-    return (ptoi);
-    }
-*/
+
 
   sock5 = socket(AF_INET, SOCK_DGRAM, 0);  // for receiving IQ packets from FlexRadio (RG)
   if (sock5 < 0) {
@@ -1267,248 +1166,11 @@ int *run_DE(void)
   int c2 = 2;
   rc = pthread_create(&thread4[2], 0, handleCommands, (void*)c2);
   
-  rc = pthread_join(thread3, NULL);
-  printf("record after thread join =%i\n",rc);
-
-  puts("Set up sock6 socket");
-
-
-  if((sock6 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
-     { perror("sock6 create error\n"); return (void *) -1; }
-
-
-  int yes = 1;  // make socket re-usable
-  if(setsockopt(sock6, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
-   printf("sock6: Error setting sock option SO_REUSEADDR\n");
-    int r=-1;
-    int *ptoi;
-    ptoi = &r;
-    return (ptoi);
-   }
-
-
-  addr_len = sizeof(struct sockaddr_in);
-  memset((void*)&client_addr,0,addr_len);
-  client_addr.sin_family = AF_INET;
-  client_addr.sin_addr.s_addr = htons(INADDR_ANY);
-  client_addr.sin_port = htons(DE_CH_IN_port[0]);  // listen on Port D
- // client_addr.sin_port = htons("50001");  // listen on Port D
-  ret = bind(sock6,(struct sockaddr *)&client_addr,addr_len);
-  if(ret < 0) { perror("sock1 bind error\n"); return (void *) -1; }
-
-
-  puts("Now starting command processing loop");
-
-  /////////////////////////////// control loop ////////////////////
-  while(1)
-    { 
-    printf("Awaiting command to come in on port %u\n", DE_CH_IN_port[0]);
-
-
-    struct commandBuf cmdBuf;
-    count = recvfrom(sock6, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr, &addr_len); 
-   // LH_port = ntohs(client_addr.sin_port);
-    printf("command recd %c%c %x %x %x %x from port %d, bytes=%d\n",buffer[0],buffer[1],buffer[2],buffer[3],buffer[4],buffer[5], DE_CH_IN_port[0],count);
-    char bufstr[100];
-    memcpy(bufstr, buffer, count);
-    memcpy(&cmdBuf, buffer, count);
-    printf("Raw buf= %s\n",bufstr);
-    printf("cmdBuf = %s   %i\n",cmdBuf.cmd, cmdBuf.channelNo);
-    int channelNo = cmdBuf.channelNo;
-   // command processsing
-    printf("check for S? \n");
-    if(strncmp(bufstr, "S?",2) == 0 )
-	  { 
-	  printf("STATUS INQUIRY\n");
-  //    client_addr.sin_port = htons(LH_port);  // this may wipe desired port
-      client_addr.sin_port = LH_port;  // this works for status but ruins data collection
-      count = sendto(sock1, "OK", 2, 0, (struct sockaddr*)&client_addr, addr_len);
-      printf("response = %d  sent to ",count);
-      printf(" IP: %s, Port: %d\n", 
-      inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-	  continue;
-	  }
-
-
-//  ??? there is a thread for this - probably unnecessary
-    printf("check for CH \n");
-    if(memcmp(bufstr, CONFIG_CHANNELS,2) == 0)
-      {
-      memcpy(cb.configBuffer,bufstr,sizeof(cb.configBuffer));
-      printf("CHANNEL Setup CH received %s\n",cb.chBuf.chCommand);
-      for (int i=0;i < 14; i++)
-         printf("%x ",cb.configBuffer[i]);
-      
-      printf("\n");
-      noOfChannels = cb.chBuf.activeSubChannels;
-      dataRate = cb.chBuf.channelDatarate;
-      int channelNo = cb.chBuf.channelNo;
-      printf("VITA format requested = %s\n",cb.chBuf.VITA_type);
-      printf("active channels: %i, rate = %i\n", noOfChannels, dataRate);
-      for (int i=0; i < noOfChannels; i++) 
-        {
-        if(cb.chBuf.channelDef[i].antennaPort == -1)  // means this channel is off
-          continue;
-        else
-          printf("%i, Channel %i, Port %i, Freq %lf\n", i, cb.chBuf.channelDef[i].subChannelNo, 
-          cb.chBuf.channelDef[i].antennaPort, cb.chBuf.channelDef[i].channelFreq);
-         }
+  rc = pthread_join(thread3, NULL);  // here we wait for channel creation
   
-      client_addr.sin_port = htons(LH_CONF_IN_port[channelNo] ); 
-
-      count = sendto(sock, "AK", 2, 0, (struct sockaddr*)&client_addr, addr_len);
-      printf("response = %u bytes sent to LH port %u \n ",count, LH_CONF_IN_port[channelNo]) ;
-      continue;
-      }
-
-
-printf("check for R? \n");
-printf("value = %c%c\n",bufstr[0],bufstr[1]);
-printf("memcmp = %i\n",memcmp(bufstr,"R?",2));
-    if(memcmp(bufstr, "R?",2) == 0)   // Request for list of data rates
-     {
-     printf("Request for Data Rates\n");
-     DATARATEBUF myDataRateBuf = {0};
-     strncpy(myDataRateBuf.buftype, "DR",2);
-     myDataRateBuf.dataRate[0].rateNumber= 1;
-     myDataRateBuf.dataRate[0].rateValue = 8;
-     myDataRateBuf.dataRate[1].rateNumber= 2;
-     myDataRateBuf.dataRate[1].rateValue = 4000;
-     myDataRateBuf.dataRate[2].rateNumber= 3;
-     myDataRateBuf.dataRate[2].rateValue = 8000;
-     myDataRateBuf.dataRate[3].rateNumber= 4;
-     myDataRateBuf.dataRate[3].rateValue = 48000;
-     myDataRateBuf.dataRate[4].rateNumber= 5;
-     myDataRateBuf.dataRate[4].rateValue = 96000;
-     myDataRateBuf.dataRate[5].rateNumber= 6;
-     myDataRateBuf.dataRate[5].rateValue = 192000;
-     myDataRateBuf.dataRate[6].rateNumber= 7;
-     myDataRateBuf.dataRate[6].rateValue = 384000;
-     myDataRateBuf.dataRate[7].rateNumber= 8;
-     myDataRateBuf.dataRate[7].rateValue = 768000;
-     myDataRateBuf.dataRate[8].rateNumber= 9;
-     myDataRateBuf.dataRate[8].rateValue = 1536000;
-     client_addr.sin_port = htons(LH_CONF_IN_port[channelNo]);
-
-      count = sendto(sock1, (const struct datarateBuf *)&myDataRateBuf, sizeof(DATARATEBUF), 0, (struct sockaddr*)&client_addr, addr_len);
-      printf("response = %d  sent to ",count);
-      printf(" IP: %s, Port: %d\n", 
-      inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-	  continue;
-     }
-
-
-printf("check for UL \n");
-    if(memcmp(bufstr, "UL",2) == 0)
-	  {  // future function for allowing LH to drop its link to this DE
-	  printf("stoplink\n");
-	  stoplink = 1;
-	  continue;
-	  }
-
-printf("check for XC \n");
-    if(memcmp(bufstr, "XC",2)==0)
-	  {
-	  printf("Main loop stopping data acquisition\n");
-	  stopDataColl = 1;
-	  continue;
-	  }
-
-
-printf("check for SF \n");
-printf("I think it is: %c %c \n",bufstr[0],bufstr[1]);
-//       for getting flex FT 8 data
-    if(memcmp(bufstr, "SF",2)==0)  // Flex data
-     {
-      printf("Start FlexRadio / FT8 command received; starting thread\n");
-      stopft8 = 0;
-      pthread_t thread1;
-      int rc = pthread_create(&thread1, NULL, sendFT8flex, NULL);
-      continue;
-     }
-
-printf("check for XF \n");
-    if(memcmp(bufstr, "XF",2)==0)
-      {
-      printf("Stop FT8 command received\n");
-      stopft8 = 1;
-      continue;
-      }
-
-
-
-printf("check for SW \n");
-printf("I think it is: %c %c \n",bufstr[0],bufstr[1]);
-//       for getting flex FT 8 data
-    if(memcmp(bufstr, "SW",2)==0)  // Flex data
-     {
-      printf("Start FlexRadio / wspr command received; starting thread\n");
-      stopft8 = 0;
-      pthread_t thread1;
-      int rc = pthread_create(&thread1, NULL, sendwsprflex, NULL);
-      continue;
-     }
-
-/*
-printf("check for XW \n");
-    if(memcmp(bufstr, "XW",2)==0)
-      {
-      printf("Stop wspr command received\n");
-      stopwspr = 1;
-      continue;
-      }
-*/
-
-
-
-
-
-
-
-printf("check for XX \n");
-    if(memcmp(bufstr, "XX",2)==0)
-	  {
-	  printf("HALTING\n");
-	  return 0;
-	  }
-printf("check for SC \n");
-    if(memcmp(bufstr, "SC",2)==0)
-	  {
-	  puts("starting sendData");
-	  stopDataColl = 0;
-  	  long j = 1;
-  	  pthread_t datathread;
- // 	  int rc = pthread_create(&datathread, NULL, sendData1, (void *)j);
-  	  int rc = pthread_create(&datathread, NULL, sendFlexData, (void *)j);
-  	  printf("thread start rc = %d\n",rc);
-
-// following code is superfluous; DE does not plan to ACK the SC command
-
-	  printf("SEND ACK to port %u\n",LH_CONF_IN_port[channelNo]);
-      client_addr.sin_port = htons(LH_CONF_IN_port[channelNo]);  // this may wipe desired port
-      count = sendto(sock1, "AK", 2, 0, (struct sockaddr*)&client_addr, addr_len);
-      continue;
-	  }
-
-  // in case we are running but get another discovery packet
-  // This essentially switches DE simulator to talk to a different LH and/or port.
-  // TODO: Need to keep track of multiple LH devices, allow link & unlink
-printf("check for discovery packet \n");
-    if((buffer[0] & 0xFF) == 0xEF && (buffer[1] & 0xFF) == 0xFE) {
-	discoveryReply(buffer);
-	continue;
-	}
- 
-     ////////////////////////////////////////////////
-
-    // finally  - if command not recognized...
-    puts("unknown command");
-    count = sendto(sock, "NAK", 3, 0, (struct sockaddr*)&client_addr, addr_len);
-    printf("response = %d\n",count);
-
-    }  // end of control loop
-
-  //} // end of discovery loop
+  // thread3 will never complete (intentianally)
+  
+  
 }
 
 int main(int argc, char** argv) {
