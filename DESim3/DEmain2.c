@@ -14,7 +14,13 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program; if not, write to the Free Software
-* Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+* Foundation, Inc., 59 Temple Place - S          sprintf(syscommand_start,"./DEmain2 %i %s %i &",(int)ntohs(server_addr.sin_port),inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+            printf("command = %s \n",syscommand_start);
+
+
+          close(sock1);  // may have to re-establish this later
+          system(syscommand_start);uite 330, Boston, MA  02111-1307, USA.
 *
 */
 
@@ -167,7 +173,9 @@ void *sendFT8flex(void * threadid){
   flex_addr.sin_addr.s_addr = htons(INADDR_ANY);
   flex_addr.sin_port = htons(FLEXFT_IN);
   printf("bind sock4\n:");
-  int ret = bind(sock4, (struct sockaddr*)&flex_addr, addr_len);
+  int ret = bind(sock4, (struct sockaddr*)&flex_addr, addr_len);          
+
+
   if (ret < 0){
     printf("bind error\n");
     int r=-1;
@@ -501,7 +509,6 @@ void *sendFHData(void * threadid){
 }
 
 
-
 //////////////////////////////////////////////////////////////////////////////
 void *sendFlexData(void * threadid){
 // forward IQ data from flex to LH in VITA format, with minor mods
@@ -723,7 +730,6 @@ while(1)
      
       char configReply[20] = "";
 
-
       printf("ports set up; now set up sock\n");
       if (sock = socket(AF_INET, SOCK_DGRAM, 0) == -1)
           printf("creating sock failed\n");  // set up for sending to port F
@@ -758,6 +764,41 @@ while(1)
 
   //   cmdport = DE_CONF_IN_portB;  // all further commands come in here
     }
+    
+    if(strncmp(buffer, MEM_WRITE ,2) == 0)
+      {
+      printf("Memory write command received.\n");
+      
+       const char s[2] = " ";
+      char *operand;
+      operand = strtok(buffer, s);
+      
+      printf("operand = %s\n",operand);
+      operand = strtok(NULL, s);
+      printf("slot# = %s\n",operand);
+    //  channelNo = atoi(operand);
+
+      operand = strtok(NULL, s);
+      printf("interface = %s\n",operand);
+    //  LH_CONF_IN_port[channelNo] = atoi(operand);
+
+      operand = strtok(NULL, s);
+      printf("address = %s\n",operand);
+    //  LH_DATA_IN_port[channelNo] = atoi(operand);
+    
+      operand = strtok(NULL, s);
+      printf("data = %s\n",operand);
+      char configReply[20] = "";
+      printf("Sending AK to port %i\n",ntohs(client_addr.sin_port) );
+      sprintf(configReply,"AK \n");
+   //   count = sendto(sock1, d.mybuf1, sizeof(d.myConfigBuf), 0, (struct sockaddr*)&client_addr, addr_len);
+      count = sendto(sock1, configReply, sizeof(configReply), 0, (struct sockaddr*)&client_addr, addr_len);
+      
+      
+      
+      
+      }
+    
    }
   return 0;
 
