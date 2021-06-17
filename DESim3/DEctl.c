@@ -94,7 +94,8 @@ int main() {
     perror("sock1 error\n");
     return -1;
     }
-*/
+    */
+
   addr_len = sizeof(struct sockaddr_in);
   memset((void*)&server_addr, 0, addr_len);
   server_addr.sin_family = AF_INET;
@@ -109,10 +110,9 @@ int main() {
     perror("bind error\n");
     return -1;
   }
-// set up for Port B reply
- // server_addr.sin_port = htons(DE_CONF_IN_port);
- // printf("bind to sock1\n");
- // ret = bind(sock1, (struct sockaddr*)&server_addr, addr_len);
+  
+
+  
   if (ret < 0) {
     perror("bind error\n");
     return -1;
@@ -132,24 +132,80 @@ int main() {
   
           printf("READ port 1024\n");
           count = recvfrom(sock, buffer, 1024, 0, (struct sockaddr*)&client_addr, &addr_len);
+          printf("RECEIVED buffer starting with %X%X\n",buffer[0],buffer[1]);
+          
+          // Look for Tangerine-style discvoery packet
+          
+          if((buffer[0] == 0x44) && (buffer[1] == 0x3F)) {  // look for "D?"
+          // respond to the D? discovery
+          fprintf(stderr,"*** Tangerine type discovery packet came from %s port %i\n",inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
+                      
+          LH_port = ntohs(client_addr.sin_port);
+        //    client_addr.sin_port = htons(1024); // temp test
+          sock1 = socket(AF_INET, SOCK_DGRAM, 0);  // for reply via Port B
+          if (sock1 < 0) {
+              perror("sock1 error\n");
+              return -1;
+             }
+             
+
+  
+          addr_len = sizeof(struct sockaddr_in);
+          memset((void*)&config_in_addr, 0, addr_len);
+          config_in_addr.sin_family = AF_INET;
+          config_in_addr.sin_addr.s_addr = htons(INADDR_ANY);
+          config_in_addr.sin_port = 0;  // to select a random port at bind time
+  
+          printf("bind to sock1\n");
+          ret = bind(sock1, (struct sockaddr*)&config_in_addr, addr_len);
+
+          int sa_len = sizeof(server_addr);
+          // what was that port O/S selected?
+          if(getsockname(sock1,(struct sockaddr *)&config_in_addr,&sa_len) == -1)
+            printf("getsockname failed\n");
+          printf("Selected Port B = %d\n",(int)ntohs(config_in_addr.sin_port));
+          
+          printf("AK %d\n",(int)ntohs(config_in_addr.sin_port));
+          sprintf(buffer,"AK %d\n",(int)ntohs(config_in_addr.sin_port));
+      //    printf("buffer len %li\n",strlen(buffer));
+  
+  
+          printf("DEctl: Send Tangerine type Discovery reply to: IP: %s, Port: %d\n", 
+          inet_ntoa(client_addr.sin_addr), LH_port);
+
+	      count = sendto(sock, buffer, strlen(buffer), 0, (struct sockaddr*)&client_addr,
+		            sizeof(client_addr));
+          printf("bytes sent: %i\n",count);
+          
+          
+                    sprintf(syscommand_start,"./DEmain2 %i %s %i &",(int)ntohs(config_in_addr.sin_port),inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+            printf("command = %s \n",syscommand_start);
+
+
+          close(sock1);  // may have to re-establish this later
+          system(syscommand_start);
+          
+
+                          
+            
+            }
+            
+            // Look for HPSDR-style disvoery packet
+            
           if((buffer[0] & 0xFF) == 0xEF && (buffer[1] & 0xFF) == 0xFE) {
-	        fprintf(stderr,"discovery packet came from %s port %i; killing old process; \n",inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
+	        fprintf(stderr,"HPSDR type discovery packet came from %s port %i; killing old process; \n",inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
             system(syscommand_kill);
             //sleep(5);
             printf("starting DEmain\n");
             
-
             LH_port = ntohs(client_addr.sin_port);
 
-          //  printf("\nClient connection information:\n\t IP: %s, Port: %d\n", 
-          //  inet_ntoa(client_addr.sin_addr), LH_port);
-
-
-  sock1 = socket(AF_INET, SOCK_DGRAM, 0);  // for reply via Port B
-  if (sock1 < 0) {
-    perror("sock1 error\n");
-    return -1;
-    }
+            sock1 = socket(AF_INET, SOCK_DGRAM, 0);  // for reply via Port B
+            if (sock1 < 0) {
+              perror("sock1 error\n");
+              return -1;
+             }
 
           printf("DEctl: Send Discovery reply to: IP: %s, Port: %d\n", 
             inet_ntoa(client_addr.sin_addr), LH_port);
@@ -166,13 +222,6 @@ int main() {
           sprintf(syscommand_start,"./DEmain2 %i %s %i &",(int)ntohs(server_addr.sin_port),inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
             printf("command = %s \n",syscommand_start);
-
-// set up for Port B reply
-  //server_addr.sin_port = htons(DE_CONF_IN_port);
- // printf("bind to sock1\n");
- // ret = bind(sock1, (struct sockaddr*)&server_addr, addr_len);
-
-//fprintf(stderr,"after discovery reply sock1 IP=%s port %i; \n",inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
 
 
           close(sock1);  // may have to re-establish this later
