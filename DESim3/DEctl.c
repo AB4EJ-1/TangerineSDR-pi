@@ -30,12 +30,9 @@
 #include <stdbool.h>
 #include <fcntl.h>
 #include "de_signals.h"
-//#define IP_FOUND "IP_FOUND"
-//#define IP_FOUND_ACK "IP_FOUND_ACK"
+
 #define PORT 1024
 
-//#define  DE_CONF_IN 50001  //fixed port on which to receive config request (CC)
-//#define  DE_CH_IN   50002   // fixed port on which to receive channel setup req. (CH)
 
 #define UDPPORT 7100
 
@@ -46,12 +43,7 @@ struct sockaddr_in config_in_addr;
 
 int sock;
 int sock1;
-//int cmdport;
 
-//static uint16_t LH_CONF_IN_port;  // port C, receives ACK or NAK from config request
-//static uint16_t LH_CONF_OUT_port; // for sending (outbound) config request to DE
-//static uint16_t DE_CONF_IN_port;  // port B ; DE listens for config request on this port
-//static uint16_t DE_CH_IN_port;    // port D; DE listens channel setup on this port
 
 int main() {
  printf("Starting DEctl\n");
@@ -87,14 +79,6 @@ int main() {
   lin.l_linger = 0;
   setsockopt(sock, SOL_SOCKET, SO_LINGER, (const char*)&lin, sizeof(lin));
 
-/*
-  printf("set up sock1\n");
-  sock1 = socket(AF_INET, SOCK_DGRAM, 0);  // for reply via Port B
-  if (sock1 < 0) {
-    perror("sock1 error\n");
-    return -1;
-    }
-    */
 
   addr_len = sizeof(struct sockaddr_in);
   memset((void*)&server_addr, 0, addr_len);
@@ -185,9 +169,7 @@ int main() {
 
           close(sock1);  // may have to re-establish this later
           system(syscommand_start);
-          
-
-                          
+                                  
             
             }
             
@@ -227,9 +209,7 @@ int main() {
           close(sock1);  // may have to re-establish this later
           system(syscommand_start);
 
-	      //  buffer[10] = 0x07;
-// discovery reply packet
-	      //  count = sendto(sock1, buffer, 60, 0, (struct sockaddr*)&client_addr,		            sizeof(client_addr));
+
          }
         }
       }

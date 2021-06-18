@@ -672,6 +672,12 @@ while(1)
       {
       printf(" ******** DATARATE INQUIRY received \n");
       sleep(0.2);
+      char dataRateList[200];
+      sprintf(dataRateList,
+        "RT 0 8 1 375 2 4000 3 8000 4 24000 5 48000 6 96000 7 192000 \n"); 
+      
+      
+ /*     
       DATARATEBUF myDataRateBuf;
       memset(&myDataRateBuf,0,sizeof(myDataRateBuf));
       strncpy(myDataRateBuf.buftype, "DR",2);
@@ -679,7 +685,7 @@ while(1)
       myDataRateBuf.dataRate[0].rateValue = 8;
       myDataRateBuf.dataRate[1].rateNumber= 2;
       myDataRateBuf.dataRate[1].rateValue = 4000;
-      myDataRateBuf.dataRate[2].rateNumber= 3;
+      myDataRateBuf.dataRate[2].rateNumber= 3;DataRate
       myDataRateBuf.dataRate[2].rateValue = 8000;
       myDataRateBuf.dataRate[3].rateNumber= 4;
       myDataRateBuf.dataRate[3].rateValue = 48000;
@@ -693,16 +699,19 @@ while(1)
       myDataRateBuf.dataRate[7].rateValue = 768000;
       myDataRateBuf.dataRate[8].rateNumber= 9;
       myDataRateBuf.dataRate[8].rateValue = 1536000;
+      
+      */
 
 
    //   client_addr.sin_port = htons(LH_CONF_IN_port[channelNo] ); 
 
       client_addr.sin_port = LH_port;  // reply to port A
 
-      printf("Sending Datarate response to LH\n");
+    //  printf("Sending Datarate response to LH\n");
       count = 0;
-      count = sendto(sock1, &myDataRateBuf, sizeof(myDataRateBuf), 0, (struct sockaddr*)&client_addr, addr_len);
-      printf("Response: DATARATEBUF of %u bytes sent to LH port %u \n ",count, LH_port) ;
+      printf("Sending RT to port %i\n",ntohs(client_addr.sin_port) );
+      count = sendto(sock1, dataRateList, sizeof(dataRateList), 0, (struct sockaddr*)&client_addr, addr_len);
+     // printf("Response: DATARATEBUF of %u bytes sent to LH port %u \n ",count, LH_port) ;
 
       }
 
@@ -769,7 +778,7 @@ while(1)
       {
       printf("Memory write command received.\n");
       
-       const char s[2] = " ";
+      const char s[2] = " ";
       char *operand;
       operand = strtok(buffer, s);
       
@@ -791,13 +800,40 @@ while(1)
       char configReply[20] = "";
       printf("Sending AK to port %i\n",ntohs(client_addr.sin_port) );
       sprintf(configReply,"AK \n");
-   //   count = sendto(sock1, d.mybuf1, sizeof(d.myConfigBuf), 0, (struct sockaddr*)&client_addr, addr_len);
+
       count = sendto(sock1, configReply, sizeof(configReply), 0, (struct sockaddr*)&client_addr, addr_len);
-      
-      
-      
-      
+     
       }
+      
+    if(strncmp(buffer, MEM_READ ,2) == 0)
+      {
+      printf("Memory read command received.\n");
+      
+      const char s[2] = " ";
+      char *operand;
+      operand = strtok(buffer, s);
+      
+      printf("operand = %s\n",operand);
+      operand = strtok(NULL, s);
+      printf("slot# = %s\n",operand);
+    //  channelNo = atoi(operand);
+
+      operand = strtok(NULL, s);
+      printf("interface = %s\n",operand);
+    //  LH_CONF_IN_port[channelNo] = atoi(operand);
+
+      operand = strtok(NULL, s);
+      printf("address = %s\n",operand);
+    //  LH_DATA_IN_port[channelNo] = atoi(operand);
+
+      char configReply[40] = "";
+      printf("Sending RR to port %i\n",ntohs(client_addr.sin_port) );
+      sprintf(configReply,"RR 0x0001 0x0005 0x0AC2 0x0001\n");
+
+      count = sendto(sock1, configReply, sizeof(configReply), 0, (struct sockaddr*)&client_addr, addr_len);
+     
+      }
+      
     
    }
   return 0;
@@ -911,6 +947,7 @@ void *handleCommands(void* c)
       printf("Response AK = %u bytes sent to LH port %u \n ",count, LH_CONF_IN_port[channelNo]) ;
       } // end of handling CH
 
+/*
     if(memcmp(workBuf, DATARATE_INQUIRY, 2) == 0)
       {
       printf(" ******** DATARATE INQUIRY received \n");
@@ -948,6 +985,7 @@ void *handleCommands(void* c)
       printf("Response: DATARATEBUF of %u bytes sent to LH port %u \n ",count, LH_port) ;
 
       }
+      */
 
     if(memcmp(workBuf, FIREHOSE_SERVER, 2)==0)
       {
