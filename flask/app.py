@@ -64,6 +64,37 @@ from requests.structures import CaseInsensitiveDict
 
 from pathlib import Path
 
+###################unit testing setup#############################
+def create_app(test_config=None):
+    """Create and configure an instance of the Flask application."""
+    app = Flask(__name__, instance_relative_config=True)
+    app.config.from_mapping(
+        # a default secret that should be overridden by instance config
+        SECRET_KEY="dev",
+        # store the database in the instance folder
+        DATABASE=os.path.join(app.instance_path, "flaskr.sqlite"),
+    )
+
+    if test_config is None:
+        # load the instance config, if it exists, when not testing
+        app.config.from_pyfile("config.py", silent=True)
+    else:
+        # load the test config if passed in
+        app.config.update(test_config)
+
+    # ensure the instance folder exists
+    try:
+        os.makedirs(app.instance_path)
+    except OSError:
+        pass
+        
+    @app.route("/hello")
+    def hello():
+        return "Hello, World!"
+
+
+##################################################################
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'here-is-your-secret-key-ghost-rider'
 app.secret_key = 'development key'
@@ -907,24 +938,24 @@ def restart():
     return redirect('/')
 
 
-@app.route("/datarates")
-def datarates():
-    global theStatus
-    print("Request datarates")
-    log("Data rates inquiry", log_INFO)
-    send_to_mainctl(DATARATE_INQUIRY, 0.1)
+#@app.route("/datarates")
+#def datarates():
+#    global theStatus
+#    print("Request datarates")
+#    log("Data rates inquiry", log_INFO)
+#    send_to_mainctl(DATARATE_INQUIRY, 0.1)
     #  print("after check status once, theStatus=",theStatus)
-    return redirect('/')
+#    return redirect('/')
 
 
-@app.route("/chkstat")
-def chkstat():
-    global theStatus, theDatastatus
+#@app.route("/chkstat")
+#def chkstat():
+#    global theStatus, theDatastatus
     #   print("Checking status...")
     #   theStatus = check_status_once();
-    print("Sending channel req")
-    channel_request()
-    return redirect('/')
+ #   print("Sending channel req")
+ #   channel_request()
+ #   return redirect('/')
 
 
 def cleanup(inputstring):
@@ -1154,11 +1185,10 @@ def danger():
                            status=pageStatus)
 
 
-@app.route("/channelantennasetup", methods=['POST', 'GET'])
-def channelantennasetup():
-    global theStatus, theDataStatus
-    return render_template('channelantennasetup.html')
-
+#@app.route("/channelantennasetup", methods=['POST', 'GET'])
+#def channelantennasetup():
+#    global theStatus, theDataStatus
+#    return render_template('channelantennasetup.html')
 
 @app.route("/desetup", methods=['POST', 'GET'])
 def desetup():
@@ -1689,8 +1719,6 @@ def callsign():
                                c5=c5)
 
 
-      
-
 
 @app.route("/notification", methods=['POST', 'GET'])
 def notification():
@@ -1927,7 +1955,6 @@ def propagation():
         else:
             form.pskindicator.data = False
         return render_template('ft8setup.html', form=form)
-
 
 
 
