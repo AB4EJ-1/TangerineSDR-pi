@@ -1529,21 +1529,43 @@ def uploading():
 
 @app.route("/magnet", methods=['POST', 'GET'])
 def magnet():
-    print("REACHED /magnet")
+    print("REACHED /magnet, request.method=",request.method)
     global theStatus, theDataStatus
     form = MainControlForm()
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read('config.ini')
     loglevel = int(parser['settings']['loglevel'])
     log("/magnet", log_DEBUG)
-    theStatus = "Starting magnetometer via shell"
-    syscommand = "sh runMag.sh &"
-    os.system(syscommand);
+    
     if request.method == 'GET':
-            return render_template('magnet.html',
+       return render_template('magnet0.html',
                                status=theStatus,
                                form = form)
-                              
+    result = request.form
+    if result.get('csubmit') == "Run Calibrator":
+       theStatus = "Starting magnetometer via shell"
+       syscommand = "sh runMag.sh &"
+       os.system(syscommand)
+       return render_template('magnet.html',
+                               status=theStatus,
+                               form = form)
+       
+    if result.get('csubmit') == "Stop Calibrator":
+       theStatus = "Killing magnetometer via shell"
+       syscommand = "sudo killall -9 runMag"
+       os.system(syscommand)
+       
+    if result.get('csubmit') == "Run Magnetometer Data Collection":
+       theStatus = "Starting magnetometer data collection process"
+       print("Starting magnetometer background data collection")
+       syscommand = "sh ./runMag.sh"
+       os.system(syscommand)
+
+    return render_template('magnet0.html',
+                               status=theStatus,
+                               form = form)
+                       
+# This responds to a javascript query from magnet.html for magnetometer readings       
 @app.route("/magnetdata",methods=['POST','GET'])
 def magnetdata():
     global magPortStatus, s
@@ -1556,6 +1578,9 @@ def magnetdata():
       UDP_IP = "127.0.0.1"
       UDP_PORT = 9998
       s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+
+      s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+      s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
       s.bind((UDP_IP, UDP_PORT))
       magPortStatus = 1
       return("Connecting to magnetometer...")
@@ -1564,31 +1589,31 @@ def magnetdata():
       print("received ", data.decode('utf-8'),"\n")
       jdata = data.decode('utf-8')
       return str(jdata)                      
-                               
-@app.route("/magnetdata1", methods=['POST','GET'])
-def get_mag():
-    global magPortStatus, s
-    print("REACHED /magnet")
-    global theStatus, theDataStatus
-    form = MainControlForm()
-    parser = configparser.ConfigParser(allow_no_value=True)
-    parser.read('config.ini')
-    loglevel = int(parser['settings']['loglevel'])
-    log("/magnet", log_DEBUG)
-    theStatus = "Starting magnetometer"
-    if magPortStatus == 0:
-      UDP_IP = "127.0.0.1"
-      UDP_PORT = 9998
-      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-      s.bind((UDP_IP, UDP_PORT))
-      magPortStatus = 1
-      
-    print("Reached magnet data")
-    
-    if request.method == 'GET':
-      return render_template('magnet.html',
-                               status=theStatus,
-                               form = form)
+#                               
+#@app.route("/magnetdata1", methods=['POST','GET'])
+#def get_mag():
+#    global magPortStatus, s
+#    print("REACHED /magnet")
+#    global theStatus, theDataStatus
+#    form = MainControlForm()
+#    parser = configparser.ConfigParser(allow_no_value=True)
+#    parser.read('config.ini')
+#    loglevel = int(parser['settings']['loglevel'])
+#    log("/magnet", log_DEBUG)
+#    theStatus = "Starting magnetometer"
+#    if magPortStatus == 0:
+#      UDP_IP = "127.0.0.1"
+#      UDP_PORT = 9998
+#      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+#      s.bind((UDP_IP, UDP_PORT))
+#      magPortStatus = 1
+#      
+#    print("Reached magnet data")
+#    
+#    if request.method == 'GET':
+#      return render_template('magnet.html',
+#                               status=theStatus,
+#                               form = form)
 
     if request.method == 'POST':
       print("get_mag POST recd")
