@@ -64,6 +64,10 @@ from requests.structures import CaseInsensitiveDict
 
 from pathlib import Path
 
+magDataBuffer = []
+#magDataBuffer = [0 for i in range(10)]
+#magDataBuffer = [1,2,3,4,5,6,7,8,9,10]
+
 ###################unit testing setup#############################
 def create_app(test_config=None):
     """Create and configure an instance of the Flask application."""
@@ -1588,49 +1592,59 @@ def magnetdata():
       data, address = s.recvfrom(9998)
       print("received ", data.decode('utf-8'),"\n")
       jdata = data.decode('utf-8')
+      jobject = json.loads(jdata)
+      zvalue = jobject["z"]
+      print("jdata z=",zvalue)
+      
       return str(jdata)                      
-#                               
-#@app.route("/magnetdata1", methods=['POST','GET'])
-#def get_mag():
-#    global magPortStatus, s
-#    print("REACHED /magnet")
-#    global theStatus, theDataStatus
-#    form = MainControlForm()
-#    parser = configparser.ConfigParser(allow_no_value=True)
-#    parser.read('config.ini')
-#    loglevel = int(parser['settings']['loglevel'])
-#    log("/magnet", log_DEBUG)
-#    theStatus = "Starting magnetometer"
-#    if magPortStatus == 0:
-#      UDP_IP = "127.0.0.1"
-#      UDP_PORT = 9998
-#      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
-#      s.bind((UDP_IP, UDP_PORT))
-#      magPortStatus = 1
-#      
-#    print("Reached magnet data")
-#    
-#    if request.method == 'GET':
-#      return render_template('magnet.html',
-#                               status=theStatus,
-#                               form = form)
+#   
 
-    if request.method == 'POST':
-      print("get_mag POST recd")
-      return 'OK', 200
+
+@app.route("/magnetdata1",methods=['POST','GET'])
+def magnetdata1():
+    global magPortStatus, s
+    global magDataBuffer
+    print("REACHED /magnetdata fetch")
+    global theStatus, theDataStatus 
+ #   if magPortStatus == 0:
+ #     return("rm3100 not active")
+           
+    if magPortStatus == 0:
+      UDP_IP = "127.0.0.1"
+      UDP_PORT = 9998
+      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 0)
+
+      s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+      s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+      s.bind((UDP_IP, UDP_PORT))
+      magPortStatus = 1
+      return("Connecting to magnetometer...")
     else:
-      currentDT = datetime.now()
-      jdata = ""
-      if magPortStatus == 1:
-        data, address = s.recvfrom(9998)
-        print("received ", data.decode('utf-8'),"\n")
-        jdata = data.decode('utf-8')
-        return str(jdata)
-        
-    return render_template('magnet.html',
+      data, address = s.recvfrom(9998)
+      print("received ", data.decode('utf-8'),"\n")
+      jdata = data.decode('utf-8')
+      jobject = json.loads(jdata)
+      zvalue = jobject["y"]
+      magDataBuffer.append(zvalue)
+      if (len(magDataBuffer) >= 20):
+        x = magDataBuffer.pop(0)
+      print("jdata z=",zvalue)
+      jdata1 = {"y": magDataBuffer}
+      jdata2 = json.dumps(jdata1)
+      return str(jdata2)
+
+
+                            
+@app.route("/magnetdata2", methods=['POST','GET'])
+def get_mag():
+    global magPortStatus, s
+    print("REACHED /magnetdata2 fetch")
+    global theStatus, theDataStatus 
+    form = MainControlForm()
+    return render_template('Hellothere3.html',
                                status=theStatus,
                                form = form)
-
+                               
 @app.route("/callsign", methods=['POST', 'GET'])
 def callsign():
     global theStatus, theDataStatus

@@ -80,21 +80,6 @@ document.getElementById("dt").innerHTML = d.toUTCString()
 </script>
 
 
-<script>
-
-
- fetch('/magnetdata')
-  .then(function (response) {
-    return response.text();
-   }).then(function (text) {
-     console.log('GET response text');
-     console.log(text);
-     document.getElementById("myelement2").innerHTML = text;
-   });
-   
-</script>
-    
-
 <body>
 <table width="100%">
    <tbody><tr>
@@ -155,6 +140,72 @@ document.getElementById("dt").innerHTML = d.toUTCString()
       
         <br>{{ status }} 
         <br> <div id="myelement2">.</div>
+        
+        <script> var elem = "myelement2"; myobj = JSON.parse(elem);  console.log(myobj.z);
+        </script>
+        
+        <div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/assets/js/jquery-1.12.0.min.js"></script>
+<canvas id="myChart" width="400" height="100"></canvas>
+
+<canvas id="myLineChart" width="500" height="100"></canvas>
+
+
+<script>
+  function drawLineChart() {
+     console.log('enter function drawLinechart');
+    // Add a helper to format timestamp data
+    Date.prototype.formatMMDDYYYY = function() {
+        return (this.getMonth() + 1) +
+        "/" +  this.getDate() +
+        "/" +  this.getFullYear();
+    }
+
+    var jsonData = $.ajax({
+      url: 'http://localhost:5000/magnetdata',
+      dataType: 'json',
+    }).done(function (results) {
+      console.log('JSON data fetch');
+      // Split timestamp and data into separate arrays
+      var labels = [], data=[];
+      results["packets"].forEach(function(packet) {
+   //     labels.push(new Date(packet.timestamp).formatMMDDYYYY());
+        data.push(parseFloat(packet.payloadString));
+      });
+
+      // Create the chart.js data structure using 'labels' and 'data'
+      var tempData = {
+        labels : labels,
+        datasets : [{
+            fillColor             : "rgba(151,187,205,0.2)",
+            strokeColor           : "rgba(151,187,205,1)",
+            pointColor            : "rgba(151,187,205,1)",
+            pointStrokeColor      : "#fff",
+            pointHighlightFill    : "#fff",
+            pointHighlightStroke  : "rgba(151,187,205,1)",
+            data                  : data
+        }]
+      };
+
+      // Get the context of the canvas element we want to select
+      var ctx = document.getElementById("myLineChart").getContext("2d");
+
+      // Instantiate a new chart
+      var myLineChart = new Chart(ctx).Line(tempData, {
+        //bezierCurve: false
+      });
+    });
+  }
+
+  drawLineChart();
+</script>
+
+
+
+
+        </div>
+
     
     </form>
 
