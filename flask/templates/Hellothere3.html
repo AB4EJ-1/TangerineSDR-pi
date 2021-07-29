@@ -747,41 +747,158 @@ div.WordSection1
 
 <div class=WordSection1>
 
-<p class=MsoNormal>Hello there</p>
+<p class=MsoNormal>Magnetometer Strip Chart</p>
 
-<p class=MsoNormal><o:p>&nbsp;</o:p></p>
+<script>
+window.xmin = 42000;
+window.xmax = 40000;
+window.ymin = 21000;
+window.ymax = 23000;
+window.zmin = -100;
+window.zmax = 100;
+window.tmmin = 40000;
+window.tmmax = 44000;
+window.vx = " "
+window.vy = " "
+window.vz = " "
+window.vtm = " "
 
-<p class=MsoNormal><o:p>&nbsp;</o:p></p>
+// Adjust bounds of strip chart y axis
+function limits(message) {
+  
+  top1 =    Math.max(...window.vx)
+  bottom1 = Math.min(...window.vx)
+  delta = (top1 - bottom1) * 0.05;
+  if (delta < 2) {
+   delta = 5;
+   }
+  window.xmax = top1 + delta;
+  window.xmin =  bottom1 - delta;
 
+  top1 =    Math.max(...window.vy)
+  bottom1 = Math.min(...window.vy)
+  delta = (top1 - bottom1) * 0.05;
+  if (delta < 2) {
+   delta = 5;
+   }
+  window.ymax = top1 + delta;
+  window.ymin =  bottom1 - delta;
+
+  top1 =    Math.max(...window.vz)
+  bottom1 = Math.min(...window.vz)
+  delta = (top1 - bottom1) * 0.05;
+  if (delta < 2) {
+   delta = 5;
+   }
+  window.zmax = top1 + delta;
+  window.zmin =  bottom1 - delta;
+
+  top1 =    Math.max(...window.vtm)
+  bottom1 = Math.min(...window.vtm)
+  delta = (top1 - bottom1) * 0.05;
+  if (delta < 2) {
+   delta = 5;
+   }
+  window.tmmax = top1 + delta;
+  window.tmmin =  bottom1 - delta;
+
+
+//  alert(top1 + "," +bottom1 +"," +delta + ","+ window.xmin + " , " + window.xmax);
+}
+
+</script>
+<INPUT NAME="showOut" TYPE="button" VALUE=" Set avg" onClick="limits('a')" >
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-
-
-CHART2:
-<canvas id="myLineChart" width="740" height="100"></canvas>
+<canvas id="myLineChart"   width="740" height="80"></canvas>
+<canvas id="myLineCharty"  width="740" height="80"></canvas>
+<canvas id="myLineChartz"  width="740" height="80"></canvas>
+<canvas id="myLineCharttm" width="740" height="80"></canvas>
 
 <script>
 
 function plotIt(mydata,mychart){
   console.log("plotIt", mydata)
-  mychart.data.datasets[0].data = mydata.y;
+  mychart.data.datasets[0].data = mydata.x;
+  window.vx = mydata.x;
+  console.log("mychart.data.datasets[0].data x:",mychart.data.datasets[0].data);
+  mychart.options.scales.y.min = window.xmin;
+  mychart.options.scales.y.max = window.xmax;
   mychart.update('active');
 }
+
+function plotIty(mydata,mychart){
+  console.log("plotIt", mydata)
+  mychart.data.datasets[0].data = mydata.y;
+  window.vy = mydata.y;
+  console.log("mychart.data.datasets[0].data y:",mychart.data.datasets[0].data);
+  mychart.options.scales.y.min = window.ymin;
+  mychart.options.scales.y.max = window.ymax;
+  mychart.update('active');
+}
+
+function plotItz(mydata,mychart){
+  console.log("plotIt", mydata)
+  mychart.data.datasets[0].data = mydata.z;
+  window.vz = mydata.z;
+  console.log("mychart.data.datasets[0].data z:",mychart.data.datasets[0].data);
+  mychart.options.scales.y.min = window.zmin;
+  mychart.options.scales.y.max = window.zmax;
+  mychart.update('active');
+}
+
+function plotIttm(mydata,mychart){
+  console.log("plotIt", mydata)
+  mychart.data.datasets[0].data = mydata.tm;
+  window.vtm = mydata.tm;
+  console.log("mychart.data.datasets[0].data tm:",mychart.data.datasets[0].data);
+  mychart.options.scales.y.min = window.tmmin;
+  mychart.options.scales.y.max = window.tmmax;
+  mychart.update('active');
+}
+
 var dataholder = [0]
+var dataholdery = [0]
+var dataholderz = [0]
+var dataholdertm = [0]
 for (i=0;i<20;i++) {
   dataholder.push(0);
+  dataholdery.push(0);
+  dataholderz.push(0);
+  dataholdertm.push(0);
 }
   
-
 var ctx = document.getElementById('myLineChart').getContext('2d');
 var myLineChart = new Chart(ctx, {
     type: 'line',
     data: {
         labels: ['20','19','18', '17','16','15','14','13','12','11','10','9','8','7','6','5','4','3','2','1'],
         datasets: [{
-            label: 'seconds ago',
+            label: 'X AXIS',
             data: dataholder,
+            borderColor:['rgba(255,50,50,1)'],
+            borderWidth: 2
+        }]
+    },
+    options: {   
+        scales: {
+            y: {
+                suggestedMin: window.xmin,
+                suggestedMax: window.xmax
+            }
+        }
+    }
+ });
+ 
+var ctxy = document.getElementById('myLineCharty').getContext('2d');
+var myLineCharty = new Chart(ctxy, {
+    type: 'line',
+    data: {
+        labels: ['20','19','18', '17','16','15','14','13','12','11','10','9','8','7','6','5','4','3','2','1'],
+        datasets: [{
+            label:'Y AXIS',
+            data: dataholdery,
             borderColor:['rgba(255,50,50,1)'],
             borderWidth: 2
         }]
@@ -794,7 +911,51 @@ var myLineChart = new Chart(ctx, {
             }
         }
     }
- });
+ }); 
+ 
+var ctxz = document.getElementById('myLineChartz').getContext('2d');
+var myLineChartz = new Chart(ctxz, {
+    type: 'line',
+    data: {
+        labels: ['20','19','18', '17','16','15','14','13','12','11','10','9','8','7','6','5','4','3','2','1'],
+        datasets: [{
+            label: 'Z AXIS',
+            data: dataholderz,
+            borderColor:['rgba(255,50,50,1)'],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                suggestedMin: -100,
+                suggestedMax: 100
+            }
+        }
+    }
+ }); 
+ 
+var ctxtm = document.getElementById('myLineCharttm').getContext('2d');
+var myLineCharttm = new Chart(ctxtm, {
+    type: 'line',
+    data: {
+        labels: ['20','19','18', '17','16','15','14','13','12','11','10','9','8','7','6','5','4','3','2','1'],
+        datasets: [{
+            label: 'Total',
+            data: dataholdertm,
+            borderColor:['rgba(255,50,50,1)'],
+            borderWidth: 2
+        }]
+    },
+    options: {
+        scales: {
+            y: {
+                suggestedMin: -100,
+                suggestedMax: 100
+            }
+        }
+    }
+ }); 
 
 
 
@@ -805,7 +966,7 @@ function myTimer() {
 console.log("timer")
 fetch('http://localhost:5000/magnetdata1', { mode: "same-origin", credentials: 'same-origin'})
  .then(response => response.json())
- .then(data => plotIt(data,myLineChart));
+ .then(data => {plotIt(data,myLineChart); plotIty(data,myLineCharty); plotItz(data,myLineChartz); plotIttm(data,myLineCharttm); } );
  
  }
 

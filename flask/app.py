@@ -65,6 +65,10 @@ from requests.structures import CaseInsensitiveDict
 from pathlib import Path
 
 magDataBuffer = []
+magDataBufferx = []
+magDataBuffery = []
+magDataBufferz = []
+magDataBuffertm = []
 #magDataBuffer = [0 for i in range(10)]
 #magDataBuffer = [1,2,3,4,5,6,7,8,9,10]
 
@@ -1573,6 +1577,7 @@ def magnet():
 @app.route("/magnetdata",methods=['POST','GET'])
 def magnetdata():
     global magPortStatus, s
+    global jdata
     print("REACHED /magnetdata fetch")
     global theStatus, theDataStatus 
  #   if magPortStatus == 0:
@@ -1591,10 +1596,13 @@ def magnetdata():
     else:
       data, address = s.recvfrom(9998)
       print("received ", data.decode('utf-8'),"\n")
-      jdata = data.decode('utf-8')
+      if 'jdata' in dir():
+        jdata += data.decode('utf-8')
+      else:
+        jdata = data.decode('utf-8')
       jobject = json.loads(jdata)
       zvalue = jobject["z"]
-      print("jdata z=",zvalue)
+      print("jdata =",jdata)
       
       return str(jdata)                      
 #   
@@ -1604,7 +1612,7 @@ def magnetdata():
 def magnetdata1():
     global magPortStatus, s
     global magDataBuffer
-    print("REACHED /magnetdata fetch")
+    print("REACHED /magnetdata1 fetch")
     global theStatus, theDataStatus 
  #   if magPortStatus == 0:
  #     return("rm3100 not active")
@@ -1624,24 +1632,39 @@ def magnetdata1():
       print("received ", data.decode('utf-8'),"\n")
       jdata = data.decode('utf-8')
       jobject = json.loads(jdata)
-      zvalue = jobject["y"]
-      magDataBuffer.append(zvalue)
-      if (len(magDataBuffer) >= 20):
-        x = magDataBuffer.pop(0)
-      print("jdata z=",zvalue)
-      jdata1 = {"y": magDataBuffer}
+      
+      xvalue = jobject["x"]
+      magDataBufferx.append(xvalue)
+      if(len(magDataBufferx) > 20):
+        x = magDataBufferx.pop(0)
+        
+      yvalue = jobject["y"]
+      magDataBuffery.append(yvalue)
+      if(len(magDataBuffery) > 20):
+        x = magDataBuffery.pop(0)
+        
+      zvalue = jobject["z"]
+      magDataBufferz.append(zvalue)
+      if(len(magDataBufferz) > 20):
+        x = magDataBufferz.pop(0)
+      
+      tmvalue = jobject["tm"]
+      magDataBuffertm.append(tmvalue)
+      if(len(magDataBuffertm) > 20):
+        x = magDataBuffertm.pop(0)
+
+      jdata1 = {"x": magDataBufferx, "y": magDataBuffery, "z":magDataBufferz, "tm":magDataBuffertm }
       jdata2 = json.dumps(jdata1)
       return str(jdata2)
 
-
-                            
+                       
 @app.route("/magnetdata2", methods=['POST','GET'])
 def get_mag():
     global magPortStatus, s
     print("REACHED /magnetdata2 fetch")
     global theStatus, theDataStatus 
     form = MainControlForm()
-    return render_template('Hellothere3.html',
+    return render_template('stripchart.html',
                                status=theStatus,
                                form = form)
                                
