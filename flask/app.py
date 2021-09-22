@@ -405,7 +405,7 @@ def heartbeat_thread(threadname, a):
             uploadstart = r1['timestart']
             print("STOP:",r1['timestop'])
             uploadend = r1['timestop']
-            print("DR pending = '" + DR_pending + "'")
+            print("DR pending = '" + str(r1['requestID']) + "'")
             if (
                     int(DR_pending) == int(r1['requestID'])
             ):  # we have already started (or completed) processing this one
@@ -422,7 +422,8 @@ def heartbeat_thread(threadname, a):
                 command = 'logger "' + DRstatus + '"'
                 os.system(command)
                 parser.set('settings', 'dr_pending', requestNo)
-                fp = open('config.ini', 'w')
+                print("BEFORE UPDATING OF DATA REQ#, upload_path=" + upload_path + " DR#=" + requestNo)
+                fp = open('config.ini', 'w')   
                 parser.write(fp)
                 fp.close()
             command = "drf ls " + ringbuffer_path + " -r -s " + uploadstart + " -e " + uploadend + \
@@ -431,14 +432,16 @@ def heartbeat_thread(threadname, a):
             log("drf command: " + command, log_INFO)
             os.system(command)
             a = datetime.now()
-            fn = "%i-%i-%i_%i:%i:%iZ" % (a.year, a.month, a.day, a.hour,
-                                         a.minute, +a.second)
+      #      fn = "%i-%i-%i_%i:%i:%iZ" % (a.year, a.month, a.day, a.hour,
+       #                                  a.minute, +a.second)
+            fn = "%i-%i-%i" % (a.year, a.month, a.day) + "_d" + str(r1['requestID']) 
             command = "./filecompress.sh " + ringbuffer_path + " " + RAMdisk_path + "/dataFileList " + \
               upload_path + "/" + fn + "_" + theNode + "_DRF.tar"
             log("filecompress : " + command, log_INFO)
             print("compress command: ", command)
             os.system(command)
-            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;mkdir d" + DR_pending + ";exit' -u " + theNode + "," + theToken + " sftp://" + central_host
+            DR_pending = parser['settings']['dr_pending']
+            command = "lftp -e 'set net:limit-rate " + throttle + ";mirror -R --Remove-source-files --verbose " + upload_path + " " + "tangerine_data;mkdir d" + DR_pending + ";exit' -u " + theNode + "," + theToken + " sftp://" + central_host + " &"  # set this to run in background so app.py does not hang during data xfer
             print("Upload command = '" + command + "'")
             log("Uploading, Node = " + theNode + " token = " + theToken, log_INFO)
             print("Starting upload...")
